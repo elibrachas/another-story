@@ -153,28 +153,39 @@ export async function approveStory(storyId: string) {
 
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) {
+    console.error("Error de autenticación:", userError)
     throw new Error("No autenticado")
   }
 
   // Verificar si el usuario es administrador
   if (!isAuthorizedAdmin(userData.user.email)) {
+    console.error("Usuario no autorizado:", userData.user.email)
     throw new Error("No autorizado")
   }
 
+  console.log(`Intentando aprobar historia con ID: ${storyId}`)
+
   // Actualizar el estado de la historia a publicada
-  const { error, data } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select().single()
+  const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select().single()
 
   if (error) {
     console.error("Error al aprobar historia:", error)
-    throw new Error(error.message)
+    throw new Error(`Error al aprobar historia: ${error.message}`)
   }
+
+  if (!data) {
+    console.error("No se encontró la historia o no se actualizó")
+    throw new Error("No se encontró la historia o no se actualizó")
+  }
+
+  console.log(`Historia aprobada exitosamente: ${data.id}`)
 
   // Forzar la revalidación de las rutas
   revalidatePath("/")
   revalidatePath("/admin")
   revalidatePath(`/story/${storyId}`)
 
-  return data
+  return { success: true, data }
 }
 
 export async function rejectStory(storyId: string) {

@@ -43,9 +43,16 @@ export default async function AdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Panel de Administración</h1>
-        <Link href="/">
-          <Button variant="outline">Volver al Sitio</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/admin/emergency">
+            <Button variant="destructive" size="sm">
+              Herramientas de Emergencia
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="outline">Volver al Sitio</Button>
+          </Link>
+        </div>
       </div>
 
       <AdminStats stats={stats} />

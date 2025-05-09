@@ -20,11 +20,20 @@ import {
 export function AdminStoryList({ stories }: { stories: Story[] }) {
   const [pendingStories, setPendingStories] = useState(stories)
   const [storyToReject, setStoryToReject] = useState<Story | null>(null)
+  const [isApproving, setIsApproving] = useState<string | null>(null)
+  const [isRejecting, setIsRejecting] = useState(false)
   const { toast } = useToast()
 
   const handleApprove = async (storyId: string) => {
     try {
-      await approveStory(storyId)
+      setIsApproving(storyId)
+
+      // Llamar a la acción del servidor para aprobar la historia
+      const result = await approveStory(storyId)
+
+      if (!result || !result.success) {
+        throw new Error("No se pudo aprobar la historia")
+      }
 
       // Actualizar el estado local para reflejar el cambio inmediatamente
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
@@ -43,11 +52,14 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
         description: "Error al aprobar la historia. Por favor, inténtalo de nuevo.",
         variant: "destructive",
       })
+    } finally {
+      setIsApproving(null)
     }
   }
 
   const handleReject = async (storyId: string) => {
     try {
+      setIsRejecting(true)
       await rejectStory(storyId)
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
       setStoryToReject(null)
@@ -56,11 +68,14 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
         description: "La historia ha sido eliminada",
       })
     } catch (error) {
+      console.error("Error al rechazar historia:", error)
       toast({
         title: "Error",
         description: "Error al rechazar la historia",
         variant: "destructive",
       })
+    } finally {
+      setIsRejecting(false)
     }
   }
 
@@ -117,6 +132,7 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
                   size="icon"
                   className="text-green-500"
                   title="Aprobar historia"
+                  disabled={isApproving === story.id}
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -126,6 +142,7 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
                   size="icon"
                   className="text-red-500"
                   title="Rechazar historia"
+                  disabled={isApproving === story.id}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -155,11 +172,15 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStoryToReject(null)}>
+            <Button variant="outline" onClick={() => setStoryToReject(null)} disabled={isRejecting}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={() => storyToReject && handleReject(storyToReject.id)}>
-              Rechazar
+            <Button
+              variant="destructive"
+              onClick={() => storyToReject && handleReject(storyToReject.id)}
+              disabled={isRejecting}
+            >
+              {isRejecting ? "Rechazando..." : "Rechazar"}
             </Button>
           </DialogFooter>
         </DialogContent>
