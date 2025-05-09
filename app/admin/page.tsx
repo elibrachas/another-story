@@ -9,7 +9,9 @@ import { AdminStoryList } from "@/components/admin/admin-story-list"
 import { AdminCommentList } from "@/components/admin/admin-comment-list"
 import { AdminUserList } from "@/components/admin/admin-user-list"
 import { AdminStats } from "@/components/admin/admin-stats"
+import { DebugPanel } from "@/components/admin/debug-panel"
 import { getAdminStories, getAdminComments, getAdminUsers, getAdminStats } from "@/lib/supabase-admin"
+import { isAuthorizedAdmin } from "@/lib/admin-utils"
 
 export default async function AdminPage() {
   const supabase = createServerComponentClient({ cookies })
@@ -22,8 +24,14 @@ export default async function AdminPage() {
     redirect("/auth")
   }
 
-  // En una aplicación real, verificaríamos si el usuario es administrador
-  // Por ahora, asumimos que el usuario conectado es administrador
+  // Verificar si el usuario actual está autorizado como administrador
+  const userEmail = session.user.email
+  if (!isAuthorizedAdmin(userEmail)) {
+    // Si no está autorizado, redirigir a la página principal
+    redirect("/")
+  }
+
+  // El usuario está autorizado, cargar los datos de administración
   const [stories, comments, users, stats] = await Promise.all([
     getAdminStories(),
     getAdminComments(),
@@ -47,6 +55,7 @@ export default async function AdminPage() {
           <TabsTrigger value="stories">Historias</TabsTrigger>
           <TabsTrigger value="comments">Comentarios</TabsTrigger>
           <TabsTrigger value="users">Usuarios</TabsTrigger>
+          <TabsTrigger value="debug">Depuración</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stories">
@@ -83,6 +92,10 @@ export default async function AdminPage() {
               <AdminUserList users={users} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="debug">
+          <DebugPanel />
         </TabsContent>
       </Tabs>
     </div>

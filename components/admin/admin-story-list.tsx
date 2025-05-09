@@ -25,15 +25,22 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   const handleApprove = async (storyId: string) => {
     try {
       await approveStory(storyId)
+
+      // Actualizar el estado local para reflejar el cambio inmediatamente
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
+
       toast({
         title: "Historia aprobada",
         description: "La historia ha sido publicada en el sitio",
       })
+
+      // Forzar una recarga de la página para asegurar que los cambios se reflejen
+      window.location.reload()
     } catch (error) {
+      console.error("Error al aprobar historia:", error)
       toast({
         title: "Error",
-        description: "Error al aprobar la historia",
+        description: "Error al aprobar la historia. Por favor, inténtalo de nuevo.",
         variant: "destructive",
       })
     }

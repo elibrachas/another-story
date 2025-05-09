@@ -1,9 +1,21 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import type { Story, AdminComment, AdminUser, AdminStats } from "./types"
+import { isAuthorizedAdmin } from "./admin-utils"
+
+// Función auxiliar para verificar la autorización del administrador
+async function verifyAdminAccess(supabase: any) {
+  const { data } = await supabase.auth.getUser()
+  if (!data.user || !isAuthorizedAdmin(data.user.email)) {
+    throw new Error("No autorizado")
+  }
+}
 
 export async function getAdminStories() {
   const supabase = createServerComponentClient({ cookies })
+
+  // Verificar si el usuario es administrador
+  await verifyAdminAccess(supabase)
 
   const { data: stories } = await supabase
     .from("stories")
@@ -33,6 +45,9 @@ export async function getAdminStories() {
 export async function getAdminComments() {
   const supabase = createServerComponentClient({ cookies })
 
+  // Verificar si el usuario es administrador
+  await verifyAdminAccess(supabase)
+
   // En un sistema real, tendríamos un campo 'approved' para los comentarios
   // Por ahora, asumimos que todos los comentarios están aprobados
   const { data: comments } = await supabase
@@ -58,6 +73,9 @@ export async function getAdminComments() {
 
 export async function getAdminUsers() {
   const supabase = createServerComponentClient({ cookies })
+
+  // Verificar si el usuario es administrador
+  await verifyAdminAccess(supabase)
 
   // En un sistema real, tendríamos campos 'is_admin' e 'is_banned' en la tabla de perfiles
   const { data: users } = await supabase
@@ -103,7 +121,7 @@ export async function getAdminUsers() {
     email: user.auth_users?.email || "Email desconocido",
     username: user.username || null,
     created_at: user.created_at,
-    is_admin: false, // En un sistema real, esto vendría de la base de datos
+    is_admin: isAuthorizedAdmin(user.auth_users?.email), // Determinar si es admin basado en el email
     is_banned: false, // En un sistema real, esto vendría de la base de datos
     stories_count: storyCountMap[user.id] || 0,
     comments_count: commentCountMap[user.id] || 0,
@@ -114,6 +132,9 @@ export async function getAdminUsers() {
 
 export async function getAdminStats(): Promise<AdminStats> {
   const supabase = createServerComponentClient({ cookies })
+
+  // Verificar si el usuario es administrador
+  await verifyAdminAccess(supabase)
 
   // Obtener estadísticas de historias
   const { count: totalStories } = await supabase.from("stories").select("*", { count: "exact", head: true })

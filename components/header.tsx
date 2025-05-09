@@ -5,17 +5,28 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/mode-toggle"
 import { LoginDialog } from "@/components/login-dialog"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Shield } from "lucide-react"
 import { useSupabase } from "@/lib/supabase-provider"
 import { SearchBar } from "@/components/search-bar"
 import { useTheme } from "next-themes"
+import { isAuthorizedAdmin } from "@/lib/admin-utils"
 
 export default function Header() {
   const { session, supabase } = useSupabase()
   const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const { theme } = useTheme()
+
+  // Verificar si el usuario actual es administrador
+  useEffect(() => {
+    if (session?.user?.email) {
+      setIsAdmin(isAuthorizedAdmin(session.user.email))
+    } else {
+      setIsAdmin(false)
+    }
+  }, [session])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -76,12 +87,14 @@ export default function Header() {
                     Panel
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/admin" className="cursor-pointer">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Admin
-                  </Link>
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin" className="cursor-pointer">
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Cerrar sesión

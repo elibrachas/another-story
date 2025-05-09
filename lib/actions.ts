@@ -4,6 +4,7 @@ import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { generateUniqueUsername } from "./username-generator"
+import { isAuthorizedAdmin } from "./admin-utils"
 
 type StorySubmission = {
   title: string
@@ -150,18 +151,44 @@ export async function upvoteStory(storyId: string) {
 export async function approveStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  const { error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
+
+  // Actualizar el estado de la historia a publicada
+  const { error, data } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select().single()
 
   if (error) {
+    console.error("Error al aprobar historia:", error)
     throw new Error(error.message)
   }
 
+  // Forzar la revalidación de las rutas
   revalidatePath("/")
   revalidatePath("/admin")
+  revalidatePath(`/story/${storyId}`)
+
+  return data
 }
 
 export async function rejectStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
 
   const { error } = await supabase.from("stories").delete().eq("id", storyId)
 
@@ -333,6 +360,16 @@ export async function createInitialProfile() {
 export async function approveComment(commentId: string) {
   const supabase = createServerActionClient({ cookies })
 
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
+
   // En un sistema real, actualizaríamos el campo 'approved' a true
   // Por ahora, simplemente simulamos la aprobación
 
@@ -342,6 +379,16 @@ export async function approveComment(commentId: string) {
 
 export async function rejectComment(commentId: string) {
   const supabase = createServerActionClient({ cookies })
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
 
   const { error } = await supabase.from("comments").delete().eq("id", commentId)
 
@@ -356,6 +403,16 @@ export async function rejectComment(commentId: string) {
 export async function banUser(userId: string) {
   const supabase = createServerActionClient({ cookies })
 
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
+
   // En un sistema real, actualizaríamos el campo 'is_banned' a true
   // Por ahora, simplemente simulamos la suspensión
 
@@ -365,6 +422,16 @@ export async function banUser(userId: string) {
 
 export async function unbanUser(userId: string) {
   const supabase = createServerActionClient({ cookies })
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
 
   // En un sistema real, actualizaríamos el campo 'is_banned' a false
   // Por ahora, simplemente simulamos la restauración
@@ -376,6 +443,16 @@ export async function unbanUser(userId: string) {
 export async function makeAdmin(userId: string) {
   const supabase = createServerActionClient({ cookies })
 
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
+
   // En un sistema real, actualizaríamos el campo 'is_admin' a true
   // Por ahora, simplemente simulamos la acción
 
@@ -385,6 +462,16 @@ export async function makeAdmin(userId: string) {
 
 export async function removeAdmin(userId: string) {
   const supabase = createServerActionClient({ cookies })
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error("No autenticado")
+  }
+
+  // Verificar si el usuario es administrador
+  if (!isAuthorizedAdmin(userData.user.email)) {
+    throw new Error("No autorizado")
+  }
 
   // En un sistema real, actualizaríamos el campo 'is_admin' a false
   // Por ahora, simplemente simulamos la acción

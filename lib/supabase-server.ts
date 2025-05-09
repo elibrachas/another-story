@@ -5,17 +5,30 @@ import type { Story, Comment, Tag } from "./types"
 export async function getStories() {
   const supabase = createServerComponentClient({ cookies })
 
-  const { data: stories } = await supabase
+  // Obtener solo historias publicadas
+  const { data: stories, error } = await supabase
     .from("stories")
     .select("*, story_tags(tag_id)")
     .eq("published", true)
     .order("created_at", { ascending: false })
 
-  if (!stories) return []
+  if (error) {
+    console.error("Error al obtener historias:", error)
+    return []
+  }
+
+  if (!stories || stories.length === 0) return []
 
   // Obtener todas las etiquetas para las historias
   const storyIds = stories.map((story) => story.id)
-  const { data: storyTags } = await supabase.from("story_tags").select("story_id, tags(*)").in("story_id", storyIds)
+  const { data: storyTags, error: tagsError } = await supabase
+    .from("story_tags")
+    .select("story_id, tags(*)")
+    .in("story_id", storyIds)
+
+  if (tagsError) {
+    console.error("Error al obtener etiquetas:", tagsError)
+  }
 
   // Agrupar etiquetas por historia
   const tagsByStory: Record<string, Tag[]> = {}
