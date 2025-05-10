@@ -371,36 +371,104 @@ export async function updateProfile({
 }
 
 // Nuevas funciones de administración
-export async function adminApproveStory(storyId: string): Promise<{ success: boolean; error?: string }> {
+// Reemplazar la función adminApproveStory con esta versión mejorada con más logs
+export async function adminApproveStory(storyId: string): Promise<{ success: boolean; error?: string; logs?: any[] }> {
   const supabase = createServerActionClient({ cookies })
+  const logs = []
 
   try {
-    // Verificar si el usuario es administrador
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      return { success: false, error: "No autenticado" }
-    }
+    logs.push(`Iniciando aprobación para historia ID: ${storyId}`)
 
-    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
+    // Verificar si el usuario es administrador
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      logs.push(`Error de autenticación: ${userError?.message || "No hay usuario autenticado"}`)
+      return { success: false, error: "No autenticado", logs }
+    }
+    logs.push(`Usuario autenticado: ${userData.user.id}`)
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("admin")
+      .eq("id", userData.user.id)
+      .single()
+    if (profileError) {
+      logs.push(`Error al obtener perfil: ${profileError.message}`)
+      return { success: false, error: "Error al verificar permisos", logs }
+    }
+    logs.push(`Perfil obtenido, es admin: ${profileData?.admin}`)
 
     if (!profileData?.admin) {
-      return { success: false, error: "No tienes permisos de administrador" }
+      logs.push(`Usuario no es administrador`)
+      return { success: false, error: "No tienes permisos de administrador", logs }
     }
 
-    // Aprobar la historia
-    const { error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
+    // Verificar el estado actual de la historia
+    const { data: storyBefore, error: storyBeforeError } = await supabase
+      .from("stories")
+      .select("id, title, published")
+      .eq("id", storyId)
+      .single()
 
-    if (error) {
-      console.error("Error approving story:", error)
-      return { success: false, error: error.message }
+    if (storyBeforeError) {
+      logs.push(`Error al obtener historia: ${storyBeforeError.message}`)
+      return { success: false, error: "Error al obtener historia", logs }
+    }
+    logs.push(`Estado actual de la historia: ${JSON.stringify(storyBefore)}`)
+
+    // Aprobar la historia
+    logs.push(`Intentando actualizar historia a published=true`)
+    const { data: updatedStory, error: updateError } = await supabase
+      .from("stories")
+      .update({ published: true })
+      .eq("id", storyId)
+      .select()
+
+    if (updateError) {
+      logs.push(`Error al actualizar historia: ${updateError.message}`)
+      return { success: false, error: updateError.message, logs }
+    }
+    logs.push(`Resultado de la actualización: ${JSON.stringify(updatedStory)}`)
+
+    // Verificar que la actualización se haya realizado correctamente
+    const { data: storyAfter, error: storyAfterError } = await supabase
+      .from("stories")
+      .select("id, title, published")
+      .eq("id", storyId)
+      .single()
+
+    if (storyAfterError) {
+      logs.push(`Error al verificar actualización: ${storyAfterError.message}`)
+    } else {
+      logs.push(`Estado final de la historia: ${JSON.stringify(storyAfter)}`)
+    }
+
+    // Guardar el log de la operación en una tabla de logs (opcional)
+    const { error: logError } = await supabase
+      .from("admin_logs")
+      .insert({
+        action: "approve_story",
+        user_id: userData.user.id,
+        target_id: storyId,
+        details: JSON.stringify(logs),
+        success: !updateError,
+      })
+      .select()
+
+    if (logError) {
+      logs.push(`Error al guardar log: ${logError.message}`)
+    } else {
+      logs.push(`Log guardado correctamente`)
     }
 
     revalidatePath("/admin")
     revalidatePath("/")
-    return { success: true }
+    return { success: !updateError, logs }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+    logs.push(`Error en adminApproveStory: ${errorMessage}`)
     console.error("Error in adminApproveStory action:", error)
-    return { success: false, error: "Failed to approve story" }
+    return { success: false, error: "Failed to approve story", logs }
   }
 }
 
