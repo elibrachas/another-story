@@ -50,6 +50,7 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   // Ordenar las etiquetas por nombre
   const sortedTags = [...allTags].sort((a, b) => a.name.localeCompare(b.name))
 
+  // Reemplazar la función handleSubmit con esta versión mejorada
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -80,6 +81,11 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         industry,
         publish: publishAfterSave,
       })
+
+      // Antes de enviar, si estamos en la pestaña mejorada, actualizar el contenido original también
+      if (activeTab === "improved" && improvedContent) {
+        setContent(improvedContent)
+      }
 
       const result = await updateStory({
         id: story.id,
@@ -151,6 +157,15 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   const handleTabChange = (value: string) => {
     console.log(`Cambiando a pestaña: ${value}`)
     setActiveTab(value)
+  }
+
+  // Añadir esta función para manejar la selección de la pestaña mejorada
+  const handleSelectImproved = () => {
+    if (improvedContent) {
+      setActiveTab("improved")
+      // Opcional: Actualizar el contenido original con el mejorado inmediatamente
+      // setContent(improvedContent);
+    }
   }
 
   return (
@@ -246,7 +261,12 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
               Original
               {activeTab === "original" && <Check className="h-4 w-4" />}
             </TabsTrigger>
-            <TabsTrigger value="improved" disabled={!improvedContent} className="flex gap-2">
+            <TabsTrigger
+              value="improved"
+              disabled={!improvedContent}
+              className="flex gap-2"
+              onClick={handleSelectImproved}
+            >
               Mejorado con IA
               {activeTab === "improved" && <Check className="h-4 w-4" />}
             </TabsTrigger>
