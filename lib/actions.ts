@@ -371,7 +371,7 @@ export async function updateProfile({
 }
 
 // Nuevas funciones de administración
-// Reemplazar la función adminApproveStory con esta versión simplificada
+// Reemplazar la función adminApproveStory con esta versión que usa actualización directa
 export async function adminApproveStory(storyId: string): Promise<{ success: boolean; error?: string; logs?: any[] }> {
   const supabase = createServerActionClient({ cookies })
   const logs = []
@@ -416,17 +416,19 @@ export async function adminApproveStory(storyId: string): Promise<{ success: boo
     }
     logs.push(`Estado actual de la historia: ${JSON.stringify(storyBefore)}`)
 
-    // Usar la función SQL para aprobar la historia
-    logs.push(`Llamando a la función SQL approve_story_admin`)
-    const { data: result, error: functionError } = await supabase.rpc("approve_story_admin", {
-      story_id: storyId,
-    })
+    // Usar actualización directa en lugar de la función RPC
+    logs.push(`Intentando actualizar historia a published=true`)
+    const { data: updatedStory, error: updateError } = await supabase
+      .from("stories")
+      .update({ published: true })
+      .eq("id", storyId)
+      .select()
 
-    if (functionError) {
-      logs.push(`Error al llamar a la función SQL: ${functionError.message}`)
-      return { success: false, error: functionError.message, logs }
+    if (updateError) {
+      logs.push(`Error al actualizar historia: ${updateError.message}`)
+      return { success: false, error: updateError.message, logs }
     }
-    logs.push(`Resultado de la función SQL: ${result}`)
+    logs.push(`Resultado de la actualización: ${JSON.stringify(updatedStory)}`)
 
     // Verificar que la actualización se haya realizado correctamente
     const { data: storyAfter, error: storyAfterError } = await supabase
@@ -443,7 +445,7 @@ export async function adminApproveStory(storyId: string): Promise<{ success: boo
 
     revalidatePath("/admin")
     revalidatePath("/")
-    return { success: result === true, logs }
+    return { success: true, logs }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Error desconocido"
     logs.push(`Error en adminApproveStory: ${errorMessage}`)

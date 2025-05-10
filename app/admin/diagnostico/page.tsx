@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { adminApproveStory } from "@/lib/actions"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useToast } from "@/components/ui/use-toast"
+import { approveStoryDirectAPI } from "@/lib/direct-api"
 
 export default function DiagnosticoAprobacionPage() {
   const [storyId, setStoryId] = useState("")
@@ -109,25 +110,19 @@ export default function DiagnosticoAprobacionPage() {
 
     try {
       setIsLoading(true)
-      setLogs((prev) => [
-        ...prev,
-        `Intentando llamar a la función SQL approve_story_admin para historia ID: ${storyId}`,
-      ])
+      setLogs((prev) => [...prev, `Intentando actualización directa con Supabase para historia ID: ${storyId}`])
 
-      // Usar la función SQL directamente
-      const { data, error } = await supabase.rpc("approve_story_admin", {
-        story_id: storyId,
-      })
+      const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
 
       if (error) {
-        setLogs((prev) => [...prev, `Error al llamar a la función SQL: ${error.message}`])
+        setLogs((prev) => [...prev, `Error en actualización directa: ${error.message}`])
         toast({
           title: "Error",
-          description: `Error al llamar a la función SQL: ${error.message}`,
+          description: `Error en actualización directa: ${error.message}`,
           variant: "destructive",
         })
       } else {
-        setLogs((prev) => [...prev, `Función SQL ejecutada con éxito. Resultado: ${data}`])
+        setLogs((prev) => [...prev, `Actualización directa exitosa: ${JSON.stringify(data)}`])
 
         // Verificar el estado actual
         const { data: verifyData, error: verifyError } = await supabase
@@ -144,8 +139,55 @@ export default function DiagnosticoAprobacionPage() {
         }
 
         toast({
-          title: "Función SQL",
-          description: `Operación completada con resultado: ${data}`,
+          title: "Actualización directa",
+          description: "Operación completada",
+        })
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+      setLogs((prev) => [...prev, `Error inesperado: ${errorMessage}`])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Nueva función para usar la API directa con la clave proporcionada
+  const handleDirectAPI = async () => {
+    if (!storyId) return
+
+    try {
+      setIsLoading(true)
+      setLogs((prev) => [...prev, `Intentando actualización con API directa para historia ID: ${storyId}`])
+
+      const result = await approveStoryDirectAPI(storyId)
+
+      if (!result.success) {
+        setLogs((prev) => [...prev, `Error en API directa: ${result.error}`])
+        toast({
+          title: "Error",
+          description: `Error en API directa: ${result.error}`,
+          variant: "destructive",
+        })
+      } else {
+        setLogs((prev) => [...prev, `API directa ejecutada con éxito`])
+
+        // Verificar el estado actual
+        const { data: verifyData, error: verifyError } = await supabase
+          .from("stories")
+          .select("*")
+          .eq("id", storyId)
+          .single()
+
+        if (verifyError) {
+          setLogs((prev) => [...prev, `Error al verificar estado final: ${verifyError.message}`])
+        } else {
+          setLogs((prev) => [...prev, `Estado final verificado: ${JSON.stringify(verifyData)}`])
+          setStoryDetails(verifyData)
+        }
+
+        toast({
+          title: "API Directa",
+          description: "Operación completada",
         })
       }
     } catch (error) {
@@ -213,7 +255,7 @@ export default function DiagnosticoAprobacionPage() {
             </Card>
           )}
 
-          <div className="flex gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4">
             <Button
               onClick={handleApproveStory}
               disabled={isLoading || !storyId}
@@ -222,7 +264,15 @@ export default function DiagnosticoAprobacionPage() {
               Aprobar con Server Action
             </Button>
             <Button onClick={handleDirectUpdate} disabled={isLoading || !storyId} variant="outline">
-              Usar Función SQL Directa
+              Actualización Directa
+            </Button>
+            <Button
+              onClick={handleDirectAPI}
+              disabled={isLoading || !storyId}
+              variant="outline"
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              API Directa con Clave
             </Button>
           </div>
 
