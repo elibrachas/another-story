@@ -17,9 +17,14 @@ export function PendingStories({ stories }: { stories: Story[] }) {
   const handleApprove = async (storyId: string) => {
     try {
       setIsProcessing(storyId)
+      console.log(`Iniciando aprobación para historia ID: ${storyId}`)
+
       const result = await adminApproveStory(storyId)
+      console.log("Resultado completo:", result)
 
       if (!result.success) {
+        console.error("Error en aprobación:", result.error)
+        console.log("Logs de diagnóstico:", result.logs)
         throw new Error(result.error || "Error al aprobar la historia")
       }
 

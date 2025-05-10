@@ -371,7 +371,7 @@ export async function updateProfile({
 }
 
 // Nuevas funciones de administración
-// Reemplazar la función adminApproveStory con esta versión mejorada con más logs
+// Reemplazar la función adminApproveStory con esta versión simplificada
 export async function adminApproveStory(storyId: string): Promise<{ success: boolean; error?: string; logs?: any[] }> {
   const supabase = createServerActionClient({ cookies })
   const logs = []
@@ -416,19 +416,17 @@ export async function adminApproveStory(storyId: string): Promise<{ success: boo
     }
     logs.push(`Estado actual de la historia: ${JSON.stringify(storyBefore)}`)
 
-    // Aprobar la historia
-    logs.push(`Intentando actualizar historia a published=true`)
-    const { data: updatedStory, error: updateError } = await supabase
-      .from("stories")
-      .update({ published: true })
-      .eq("id", storyId)
-      .select()
+    // Usar la función SQL para aprobar la historia
+    logs.push(`Llamando a la función SQL approve_story_admin`)
+    const { data: result, error: functionError } = await supabase.rpc("approve_story_admin", {
+      story_id: storyId,
+    })
 
-    if (updateError) {
-      logs.push(`Error al actualizar historia: ${updateError.message}`)
-      return { success: false, error: updateError.message, logs }
+    if (functionError) {
+      logs.push(`Error al llamar a la función SQL: ${functionError.message}`)
+      return { success: false, error: functionError.message, logs }
     }
-    logs.push(`Resultado de la actualización: ${JSON.stringify(updatedStory)}`)
+    logs.push(`Resultado de la función SQL: ${result}`)
 
     // Verificar que la actualización se haya realizado correctamente
     const { data: storyAfter, error: storyAfterError } = await supabase
@@ -443,27 +441,9 @@ export async function adminApproveStory(storyId: string): Promise<{ success: boo
       logs.push(`Estado final de la historia: ${JSON.stringify(storyAfter)}`)
     }
 
-    // Guardar el log de la operación en una tabla de logs (opcional)
-    const { error: logError } = await supabase
-      .from("admin_logs")
-      .insert({
-        action: "approve_story",
-        user_id: userData.user.id,
-        target_id: storyId,
-        details: JSON.stringify(logs),
-        success: !updateError,
-      })
-      .select()
-
-    if (logError) {
-      logs.push(`Error al guardar log: ${logError.message}`)
-    } else {
-      logs.push(`Log guardado correctamente`)
-    }
-
     revalidatePath("/admin")
     revalidatePath("/")
-    return { success: !updateError, logs }
+    return { success: result === true, logs }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Error desconocido"
     logs.push(`Error en adminApproveStory: ${errorMessage}`)

@@ -109,19 +109,25 @@ export default function DiagnosticoAprobacionPage() {
 
     try {
       setIsLoading(true)
-      setLogs((prev) => [...prev, `Intentando actualización directa con Supabase para historia ID: ${storyId}`])
+      setLogs((prev) => [
+        ...prev,
+        `Intentando llamar a la función SQL approve_story_admin para historia ID: ${storyId}`,
+      ])
 
-      const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
+      // Usar la función SQL directamente
+      const { data, error } = await supabase.rpc("approve_story_admin", {
+        story_id: storyId,
+      })
 
       if (error) {
-        setLogs((prev) => [...prev, `Error en actualización directa: ${error.message}`])
+        setLogs((prev) => [...prev, `Error al llamar a la función SQL: ${error.message}`])
         toast({
           title: "Error",
-          description: `Error en actualización directa: ${error.message}`,
+          description: `Error al llamar a la función SQL: ${error.message}`,
           variant: "destructive",
         })
       } else {
-        setLogs((prev) => [...prev, `Actualización directa exitosa: ${JSON.stringify(data)}`])
+        setLogs((prev) => [...prev, `Función SQL ejecutada con éxito. Resultado: ${data}`])
 
         // Verificar el estado actual
         const { data: verifyData, error: verifyError } = await supabase
@@ -138,8 +144,8 @@ export default function DiagnosticoAprobacionPage() {
         }
 
         toast({
-          title: "Actualización directa",
-          description: "Operación completada",
+          title: "Función SQL",
+          description: `Operación completada con resultado: ${data}`,
         })
       }
     } catch (error) {
@@ -216,7 +222,7 @@ export default function DiagnosticoAprobacionPage() {
               Aprobar con Server Action
             </Button>
             <Button onClick={handleDirectUpdate} disabled={isLoading || !storyId} variant="outline">
-              Actualización Directa
+              Usar Función SQL Directa
             </Button>
           </div>
 
