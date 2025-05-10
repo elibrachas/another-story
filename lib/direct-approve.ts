@@ -3,6 +3,7 @@
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { isAuthorizedAdmin } from "./admin-utils"
 
 /**
  * Función simplificada para aprobar una historia
@@ -14,6 +15,19 @@ export async function directApproveStory(storyId: string) {
 
     // Crear cliente de Supabase
     const supabase = createServerActionClient({ cookies })
+
+    // Verificar autenticación usando getUser() en lugar de getSession()
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      console.error("[DIRECT-APPROVE] Error de autenticación:", userError)
+      return { success: false, error: "No autenticado" }
+    }
+
+    // Verificar si el usuario es administrador
+    if (!isAuthorizedAdmin(userData.user.email)) {
+      console.error("[DIRECT-APPROVE] Usuario no autorizado:", userData.user.email)
+      return { success: false, error: "No autorizado" }
+    }
 
     // Actualización directa en la base de datos
     const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)

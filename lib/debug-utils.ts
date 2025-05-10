@@ -11,6 +11,7 @@ import { isAuthorizedAdmin } from "./admin-utils"
 export async function checkStoryStatus(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
+  // Usar getUser() en lugar de getSession()
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) {
     throw new Error("No autenticado")
@@ -45,6 +46,7 @@ export async function checkStoryStatus(storyId: string) {
 export async function listAllStories() {
   const supabase = createServerActionClient({ cookies })
 
+  // Usar getUser() en lugar de getSession()
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) {
     throw new Error("No autenticado")

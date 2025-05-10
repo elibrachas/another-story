@@ -152,7 +152,7 @@ export async function approveStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
   try {
-    // Verificar autenticación y autorización
+    // Verificar autenticación usando getUser() en lugar de getSession()
     const { data: userData, error: userError } = await supabase.auth.getUser()
     if (userError || !userData.user) {
       console.error("Error de autenticación:", userError)
