@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Check, X, Eye, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
-import { approveStory, rejectStory } from "@/lib/actions"
+import { rejectStory } from "@/lib/actions"
+import { directApproveStory } from "@/lib/direct-approve"
 import type { Story } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -29,9 +30,13 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
       setIsApproving(storyId)
       console.log(`Intentando aprobar historia: ${storyId}`)
 
-      // Llamar a la función de servidor para aprobar la historia
-      const result = await approveStory(storyId)
-      console.log("Resultado de aprobación:", result)
+      // Usar la función de aprobación directa
+      const result = await directApproveStory(storyId)
+      console.log("Resultado de aprobación directa:", result)
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al aprobar la historia")
+      }
 
       // Actualizar el estado local para reflejar el cambio
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))

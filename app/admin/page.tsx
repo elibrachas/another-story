@@ -49,6 +49,11 @@ export default async function AdminPage() {
           <Link href="/admin/diagnostico">
             <Button variant="outline">Diagnóstico</Button>
           </Link>
+          <Link href="/admin/direct-approve">
+            <Button variant="outline" className="bg-green-600 text-white hover:bg-green-700">
+              Aprobación Directa
+            </Button>
+          </Link>
         </div>
       </div>
 
