@@ -63,9 +63,17 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex gap-6">
-          <Link href="/acerca-de" className="text-sm font-medium transition-colors hover:text-primary">
-            Acerca de
+          <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
+            Historias
           </Link>
+          <Link href="/sobre-nosotros" className="text-sm font-medium transition-colors hover:text-primary">
+            Sobre nosotros
+          </Link>
+          {session && (
+            <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
+              Panel
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-4">

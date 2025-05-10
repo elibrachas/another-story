@@ -704,24 +704,39 @@ export async function improveStoryWithAI(content: string): Promise<{
 
     // Construir la URL absoluta
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https"
-    const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "localhost:3000"
+    const host = process.env.NEXT_PUBLIC_VERCEL_URL || "localhost:3000"
     const baseUrl = `${protocol}://${host}`
 
-    // Usar nuestra API Route para mejorar el contenido
+    console.log("Haciendo solicitud a:", `${baseUrl}/api/admin/improve-content`)
+
+    // Usar nuestra API Route para mejorar el contenido con manejo de errores mejorado
     const response = await fetch(`${baseUrl}/api/admin/improve-content`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify({ content }),
+      cache: "no-store",
     })
 
+    // Si la respuesta no es OK, intentar obtener el texto para depuración
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error("Error from API:", errorData)
-      return { success: false, error: "Error al comunicarse con la API de IA" }
+      const contentType = response.headers.get("content-type") || ""
+
+      if (contentType.includes("application/json")) {
+        const errorData = await response.json()
+        console.error("Error JSON de la API:", errorData)
+        return { success: false, error: errorData.error || `Error ${response.status}: ${response.statusText}` }
+      } else {
+        // Si no es JSON, obtener el texto para depuración
+        const textResponse = await response.text()
+        console.error("Respuesta no-JSON de la API:", textResponse.substring(0, 500)) // Primeros 500 caracteres
+        return { success: false, error: `Error ${response.status}: La API no devolvió JSON válido` }
+      }
     }
 
+    // Procesar la respuesta JSON
     const data = await response.json()
 
     if (!data.success) {
@@ -731,6 +746,6 @@ export async function improveStoryWithAI(content: string): Promise<{
     return { success: true, improvedContent: data.improvedContent }
   } catch (error) {
     console.error("Error in improveStoryWithAI action:", error)
-    return { success: false, error: "Error al mejorar el contenido con IA" }
+    return { success: false, error: error instanceof Error ? error.message : "Error al mejorar el contenido con IA" }
   }
 }

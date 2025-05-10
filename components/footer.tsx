@@ -16,8 +16,8 @@ export function Footer() {
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               Historias
             </Link>
-            <Link href="/acerca-de" className="text-sm text-muted-foreground hover:text-foreground">
-              Acerca de
+            <Link href="/sobre-nosotros" className="text-sm text-muted-foreground hover:text-foreground">
+              Sobre nosotros
             </Link>
             <Link href="/politica-de-privacidad" className="text-sm text-muted-foreground hover:text-foreground">
               Política de Privacidad
