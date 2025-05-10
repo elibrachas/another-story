@@ -709,15 +709,24 @@ export async function improveStoryWithAI(content: string): Promise<{
 
     console.log("Haciendo solicitud a:", `${baseUrl}/api/admin/improve-content`)
 
+    // Obtener las cookies para pasarlas a la solicitud
+    const cookieStore = cookies()
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ")
+
     // Usar nuestra API Route para mejorar el contenido con manejo de errores mejorado
     const response = await fetch(`${baseUrl}/api/admin/improve-content`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        Cookie: cookieHeader, // Pasar las cookies para mantener la sesión
       },
       body: JSON.stringify({ content }),
       cache: "no-store",
+      credentials: "include", // Importante para incluir cookies
     })
 
     // Si la respuesta no es OK, intentar obtener el texto para depuración

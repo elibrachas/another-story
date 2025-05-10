@@ -104,12 +104,15 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     try {
       setIsImproving(true)
 
+      console.log("Iniciando mejora de contenido con IA...")
       const result = await improveStoryWithAI(content)
 
       if (!result.success) {
+        console.error("Error al mejorar contenido:", result.error)
         throw new Error(result.error || "Error al mejorar la historia con IA")
       }
 
+      console.log("Contenido mejorado recibido correctamente")
       setImprovedContent(result.improvedContent || "")
       setActiveTab("improved")
 
@@ -118,6 +121,7 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         description: "El contenido ha sido mejorado con IA. Revisa los cambios antes de guardar.",
       })
     } catch (error) {
+      console.error("Error completo:", error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Error al mejorar el contenido con IA",
