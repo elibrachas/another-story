@@ -604,7 +604,7 @@ export async function updateStory({
 
     console.log("Actualizando historia:", { id, title, content: content.substring(0, 50) + "...", industry, publish })
 
-    // Actualizar la historia
+    // Actualizar la historia - solo título, contenido, industria y estado de publicación
     const { error: updateError } = await supabase
       .from("stories")
       .update({
@@ -620,89 +620,7 @@ export async function updateStory({
       return { success: false, error: updateError.message }
     }
 
-    // Primero, obtener las etiquetas existentes para evitar duplicados
-    const { data: existingStoryTags, error: existingTagsError } = await supabase
-      .from("story_tags")
-      .select("tag_id")
-      .eq("story_id", id)
-
-    if (existingTagsError) {
-      console.error("Error getting existing tags:", existingTagsError)
-      return { success: false, error: existingTagsError.message }
-    }
-
-    // Crear un conjunto de IDs de etiquetas existentes para búsqueda rápida
-    const existingTagIds = new Set(existingStoryTags?.map((tag) => tag.tag_id) || [])
-
-    // Eliminar etiquetas existentes
-    const { error: deleteTagsError } = await supabase.from("story_tags").delete().eq("story_id", id)
-
-    if (deleteTagsError) {
-      console.error("Error deleting existing tags:", deleteTagsError)
-      return { success: false, error: deleteTagsError.message }
-    }
-
-    // Esperar un momento para asegurarse de que la eliminación se complete
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Asignar etiquetas predefinidas, asegurándose de que no haya duplicados
-    if (tags && tags.length > 0) {
-      // Eliminar duplicados del array de tags
-      const uniqueTags = [...new Set(tags)]
-      console.log(`Asignando ${uniqueTags.length} etiquetas únicas (de ${tags.length} originales)`)
-
-      const storyTags = uniqueTags.map((tagId) => ({ story_id: id, tag_id: tagId }))
-
-      // Insertar en lotes pequeños para evitar problemas
-      for (let i = 0; i < storyTags.length; i += 5) {
-        const batch = storyTags.slice(i, i + 5)
-        const { error: tagsError } = await supabase.from("story_tags").insert(batch)
-
-        if (tagsError) {
-          console.error(`Error assigning tags batch ${i}-${i + 5}:`, tagsError)
-          return { success: false, error: tagsError.message }
-        }
-      }
-    }
-
-    // Crear y asignar etiquetas personalizadas
-    if (customTags && customTags.length > 0) {
-      // Eliminar duplicados
-      const uniqueCustomTags = [...new Set(customTags)]
-
-      for (const tagName of uniqueCustomTags) {
-        // Verificar si la etiqueta ya existe
-        const { data: existingTag } = await supabase.from("tags").select("*").eq("name", tagName).single()
-
-        let tagId: string
-
-        if (existingTag) {
-          tagId = existingTag.id
-        } else {
-          // Crear nueva etiqueta
-          const { data: newTag, error: newTagError } = await supabase
-            .from("tags")
-            .insert({ name: tagName })
-            .select()
-            .single()
-
-          if (newTagError) {
-            console.error("Error creating custom tag:", newTagError)
-            return { success: false, error: newTagError.message }
-          }
-
-          tagId = newTag.id
-        }
-
-        // Asignar etiqueta a la historia
-        const { error: customTagError } = await supabase.from("story_tags").insert({ story_id: id, tag_id: tagId })
-
-        if (customTagError) {
-          console.error("Error assigning custom tag to story:", customTagError)
-          return { success: false, error: customTagError.message }
-        }
-      }
-    }
+    // Ya no manipulamos las etiquetas - mantenemos las originales
 
     revalidatePath("/admin")
     revalidatePath(`/story/${id}`)
