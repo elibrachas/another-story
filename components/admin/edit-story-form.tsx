@@ -69,9 +69,21 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     try {
       setIsSubmitting(true)
 
+      // Determinar qué contenido usar basado en la pestaña activa
       const finalContent = activeTab === "improved" ? improvedContent : content
 
-      await updateStory({
+      console.log("Enviando datos para guardar:", {
+        id: story.id,
+        title,
+        contentLength: finalContent.length,
+        activeTab,
+        industry,
+        tagsCount: selectedTags.length,
+        customTagsCount: customTags.length,
+        publish: publishAfterSave,
+      })
+
+      const result = await updateStory({
         id: story.id,
         title,
         content: finalContent,
@@ -80,6 +92,10 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         customTags,
         publish: publishAfterSave,
       })
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al actualizar la historia")
+      }
 
       toast({
         title: "Historia actualizada",
@@ -90,9 +106,10 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
 
       router.push("/admin")
     } catch (error) {
+      console.error("Error al guardar:", error)
       toast({
         title: "Error",
-        description: "Error al actualizar la historia",
+        description: error instanceof Error ? error.message : "Error al actualizar la historia",
         variant: "destructive",
       })
     } finally {

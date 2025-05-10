@@ -10,6 +10,7 @@ export async function POST(request: Request) {
 
     const { data: userData, error: userError } = await supabase.auth.getUser()
     if (userError || !userData.user) {
+      console.error("Error de autenticación:", userError)
       return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 })
     }
 
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
       .single()
 
     if (profileError || !profileData?.admin) {
+      console.error("Error de permisos:", profileError)
       return NextResponse.json({ success: false, error: "No tienes permisos de administrador" }, { status: 403 })
     }
 
@@ -34,6 +36,8 @@ export async function POST(request: Request) {
     if (action !== "publish" && action !== "unpublish") {
       return NextResponse.json({ success: false, error: "Acción no válida" }, { status: 400 })
     }
+
+    console.log(`Actualizando estado de historia ${storyId} a ${action}`)
 
     // Crear un cliente con la clave de servicio para eludir las políticas RLS
     const supabaseAdmin = createClient(

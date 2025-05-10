@@ -602,6 +602,8 @@ export async function updateStory({
       return { success: false, error: "No tienes permisos de administrador" }
     }
 
+    console.log("Actualizando historia:", { id, title, content: content.substring(0, 50) + "...", industry, publish })
+
     // Actualizar la historia
     const { error: updateError } = await supabase
       .from("stories")
