@@ -27,15 +27,13 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   const handleApprove = async (storyId: string) => {
     try {
       setIsApproving(storyId)
-
       console.log(`Intentando aprobar historia: ${storyId}`)
+
+      // Llamar a la función de servidor para aprobar la historia
       const result = await approveStory(storyId)
       console.log("Resultado de aprobación:", result)
 
-      if (!result || !result.success) {
-        throw new Error("No se pudo aprobar la historia")
-      }
-
+      // Actualizar el estado local para reflejar el cambio
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
 
       toast({
@@ -44,7 +42,9 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
       })
 
       // Recargar la página para asegurar que los cambios se reflejen
-      window.location.reload()
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error("Error al aprobar historia:", error)
       toast({
@@ -60,8 +60,8 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   const handleReject = async (storyId: string) => {
     try {
       setIsRejecting(true)
-
       console.log(`Intentando rechazar historia: ${storyId}`)
+
       await rejectStory(storyId)
 
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))

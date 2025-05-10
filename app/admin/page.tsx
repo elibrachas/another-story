@@ -46,6 +46,9 @@ export default async function AdminPage() {
           <Link href="/">
             <Button variant="outline">Volver al Sitio</Button>
           </Link>
+          <Link href="/admin/diagnostico">
+            <Button variant="outline">Diagnóstico</Button>
+          </Link>
         </div>
       </div>
 

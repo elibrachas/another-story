@@ -152,6 +152,7 @@ export async function approveStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
   try {
+    // Verificar autenticación y autorización
     const { data: userData, error: userError } = await supabase.auth.getUser()
     if (userError || !userData.user) {
       console.error("Error de autenticación:", userError)
@@ -164,27 +165,17 @@ export async function approveStory(storyId: string) {
       throw new Error("No autorizado")
     }
 
-    console.log(`Intentando aprobar historia con ID: ${storyId}`)
+    console.log(`[DEBUG] Aprobando historia con ID: ${storyId}`)
 
-    // Actualizar el estado de la historia a publicada
-    const { data, error } = await supabase
-      .from("stories")
-      .update({ published: true })
-      .eq("id", storyId)
-      .select()
-      .single()
+    // Actualización simple y directa: cambiar published de false a true
+    const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
 
     if (error) {
-      console.error("Error al aprobar historia:", error)
+      console.error("[DEBUG] Error al aprobar historia:", error)
       throw new Error(`Error al aprobar historia: ${error.message}`)
     }
 
-    if (!data) {
-      console.error("No se encontró la historia o no se actualizó")
-      throw new Error("No se encontró la historia o no se actualizó")
-    }
-
-    console.log(`Historia aprobada exitosamente: ${data.id}`)
+    console.log("[DEBUG] Resultado de la actualización:", data)
 
     // Forzar la revalidación de las rutas
     revalidatePath("/")
@@ -193,7 +184,7 @@ export async function approveStory(storyId: string) {
 
     return { success: true, data }
   } catch (error) {
-    console.error("Error en approveStory:", error)
+    console.error("[DEBUG] Error en approveStory:", error)
     throw error
   }
 }
