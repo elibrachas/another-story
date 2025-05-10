@@ -54,7 +54,7 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     e.preventDefault()
 
     // Determinar qué contenido usar basado en la pestaña activa
-    const finalContent = activeTab === "improved" ? improvedContent : content
+    const finalContent = activeTab === "improved" && improvedContent ? improvedContent : content
 
     if (!title || !finalContent || !industry) {
       toast({
@@ -76,6 +76,7 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         title,
         contentLength: finalContent.length,
         activeTab,
+        contentSource: activeTab === "improved" ? "mejorado" : "original",
         industry,
         publish: publishAfterSave,
       })
@@ -144,6 +145,12 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     } finally {
       setIsImproving(false)
     }
+  }
+
+  // Añade esta función después de la declaración de handleImproveWithAI
+  const handleTabChange = (value: string) => {
+    console.log(`Cambiando a pestaña: ${value}`)
+    setActiveTab(value)
   }
 
   return (
@@ -233,7 +240,7 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="original" className="flex gap-2">
               Original
