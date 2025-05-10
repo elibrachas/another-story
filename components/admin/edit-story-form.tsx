@@ -50,12 +50,18 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   // Ordenar las etiquetas por nombre
   const sortedTags = [...allTags].sort((a, b) => a.name.localeCompare(b.name))
 
-  // Reemplazar la función handleSubmit con esta versión mejorada
+  // Reemplazar completamente la función handleSubmit con esta versión más explícita
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Determinar qué contenido usar basado en la pestaña activa
-    const finalContent = activeTab === "improved" && improvedContent ? improvedContent : content
+    // Determinar explícitamente qué contenido usar
+    let finalContent = content
+    if (activeTab === "improved" && improvedContent) {
+      finalContent = improvedContent
+      console.log("USANDO CONTENIDO MEJORADO:", finalContent.substring(0, 50) + "...")
+    } else {
+      console.log("USANDO CONTENIDO ORIGINAL:", finalContent.substring(0, 50) + "...")
+    }
 
     if (!title || !finalContent || !industry) {
       toast({
@@ -75,17 +81,13 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
       console.log("Enviando datos para guardar:", {
         id: story.id,
         title,
+        contentPreview: finalContent.substring(0, 50) + "...",
         contentLength: finalContent.length,
         activeTab,
         contentSource: activeTab === "improved" ? "mejorado" : "original",
         industry,
         publish: publishAfterSave,
       })
-
-      // Antes de enviar, si estamos en la pestaña mejorada, actualizar el contenido original también
-      if (activeTab === "improved" && improvedContent) {
-        setContent(improvedContent)
-      }
 
       const result = await updateStory({
         id: story.id,
@@ -95,6 +97,7 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         tags: originalTagIds,
         customTags: [],
         publish: publishAfterSave,
+        useImprovedContent: activeTab === "improved" && !!improvedContent,
       })
 
       if (!result.success) {

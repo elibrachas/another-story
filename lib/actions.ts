@@ -570,6 +570,7 @@ export async function adminApproveStory(
   }
 }
 
+// Modificar la función updateStory para añadir un parámetro explícito para el contenido mejorado
 export async function updateStory({
   id,
   title,
@@ -578,6 +579,7 @@ export async function updateStory({
   tags,
   customTags,
   publish,
+  useImprovedContent,
 }: {
   id: string
   title: string
@@ -586,6 +588,7 @@ export async function updateStory({
   tags: string[]
   customTags: string[]
   publish: boolean
+  useImprovedContent?: boolean
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = createServerActionClient({ cookies })
 
@@ -602,7 +605,15 @@ export async function updateStory({
       return { success: false, error: "No tienes permisos de administrador" }
     }
 
-    console.log("Actualizando historia:", { id, title, content: content.substring(0, 50) + "...", industry, publish })
+    console.log("Actualizando historia:", {
+      id,
+      title,
+      contentPreview: content.substring(0, 50) + "...",
+      contentLength: content.length,
+      industry,
+      publish,
+      useImprovedContent,
+    })
 
     // Actualizar la historia - solo título, contenido, industria y estado de publicación
     const { error: updateError } = await supabase
