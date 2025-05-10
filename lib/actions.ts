@@ -569,3 +569,163 @@ export async function adminApproveStory(
     return { success: false, error: "Failed to approve story", logs }
   }
 }
+
+export async function updateStory({
+  id,
+  title,
+  content,
+  industry,
+  tags,
+  customTags,
+  publish,
+}: {
+  id: string
+  title: string
+  content: string
+  industry: string
+  tags: string[]
+  customTags: string[]
+  publish: boolean
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = createServerActionClient({ cookies })
+
+  try {
+    // Verificar si el usuario es administrador
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { success: false, error: "No autenticado" }
+    }
+
+    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
+
+    if (!profileData?.admin) {
+      return { success: false, error: "No tienes permisos de administrador" }
+    }
+
+    // Actualizar la historia
+    const { error: updateError } = await supabase
+      .from("stories")
+      .update({
+        title,
+        content,
+        industry,
+        published: publish,
+      })
+      .eq("id", id)
+
+    if (updateError) {
+      console.error("Error updating story:", updateError)
+      return { success: false, error: updateError.message }
+    }
+
+    // Eliminar etiquetas existentes
+    const { error: deleteTagsError } = await supabase.from("story_tags").delete().eq("story_id", id)
+
+    if (deleteTagsError) {
+      console.error("Error deleting existing tags:", deleteTagsError)
+      return { success: false, error: deleteTagsError.message }
+    }
+
+    // Asignar etiquetas predefinidas
+    if (tags && tags.length > 0) {
+      const storyTags = tags.map((tagId) => ({ story_id: id, tag_id: tagId }))
+      const { error: tagsError } = await supabase.from("story_tags").insert(storyTags)
+
+      if (tagsError) {
+        console.error("Error assigning tags to story:", tagsError)
+        return { success: false, error: tagsError.message }
+      }
+    }
+
+    // Crear y asignar etiquetas personalizadas
+    if (customTags && customTags.length > 0) {
+      for (const tagName of customTags) {
+        // Verificar si la etiqueta ya existe
+        const { data: existingTag } = await supabase.from("tags").select("*").eq("name", tagName).single()
+
+        let tagId: string
+
+        if (existingTag) {
+          tagId = existingTag.id
+        } else {
+          // Crear nueva etiqueta
+          const { data: newTag, error: newTagError } = await supabase
+            .from("tags")
+            .insert({ name: tagName })
+            .select()
+            .single()
+
+          if (newTagError) {
+            console.error("Error creating custom tag:", newTagError)
+            return { success: false, error: newTagError.message }
+          }
+
+          tagId = newTag.id
+        }
+
+        // Asignar etiqueta a la historia
+        const { error: customTagError } = await supabase.from("story_tags").insert({ story_id: id, tag_id: tagId })
+
+        if (customTagError) {
+          console.error("Error assigning custom tag to story:", customTagError)
+          return { success: false, error: customTagError.message }
+        }
+      }
+    }
+
+    revalidatePath("/admin")
+    revalidatePath(`/story/${id}`)
+    revalidatePath("/")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in updateStory action:", error)
+    return { success: false, error: "Failed to update story" }
+  }
+}
+
+export async function improveStoryWithAI(content: string): Promise<{
+  success: boolean
+  improvedContent?: string
+  error?: string
+}> {
+  try {
+    // Verificar si el usuario es administrador
+    const supabase = createServerActionClient({ cookies })
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { success: false, error: "No autenticado" }
+    }
+
+    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
+
+    if (!profileData?.admin) {
+      return { success: false, error: "No tienes permisos de administrador" }
+    }
+
+    // Usar nuestra API Route para mejorar el contenido
+    const response = await fetch("/api/admin/improve-content", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("Error from API:", errorData)
+      return { success: false, error: "Error al comunicarse con la API de IA" }
+    }
+
+    const data = await response.json()
+
+    if (!data.success) {
+      return { success: false, error: data.error || "Error al mejorar el contenido" }
+    }
+
+    return { success: true, improvedContent: data.improvedContent }
+  } catch (error) {
+    console.error("Error in improveStoryWithAI action:", error)
+    return { success: false, error: "Error al mejorar el contenido con IA" }
+  }
+}

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Check, X, Eye } from "lucide-react"
+import { Check, X, Eye, Edit } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { adminRejectStory } from "@/lib/actions"
@@ -110,6 +110,11 @@ export function PendingStories({ stories }: { stories: Story[] }) {
               <Link href={`/story/${story.id}`} target="_blank">
                 <Button variant="outline" size="icon">
                   <Eye className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href={`/admin/edit-story/${story.id}`}>
+                <Button variant="outline" size="icon" className="text-blue-500">
+                  <Edit className="h-4 w-4" />
                 </Button>
               </Link>
               <Button
