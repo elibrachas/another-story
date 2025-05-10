@@ -17,9 +17,7 @@ export function StoryCard({ story }: { story: Story }) {
         </Link>
       </CardHeader>
       <CardContent className="flex-grow">
-        <p className="text-muted-foreground line-clamp-3 mb-2">
-          {story.excerpt || story.content.substring(0, 120) + "..."}
-        </p>
+        <p className="story-content line-clamp-3 mb-2">{story.excerpt || story.content.substring(0, 120) + "..."}</p>
 
         {story.tags && story.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">

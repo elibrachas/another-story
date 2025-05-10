@@ -12,6 +12,7 @@ import { useSupabase } from "@/lib/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
 import { createInitialProfile } from "@/lib/actions"
+import Link from "next/link"
 
 export function AuthForm() {
   const [email, setEmail] = useState("")
@@ -142,6 +143,18 @@ export function AuthForm() {
           {isLoading ? "Enviando..." : "Enviar enlace mágico"}
         </Button>
       </form>
+
+      <div className="text-xs text-muted-foreground text-center mt-4">
+        Al crear una cuenta o iniciar sesión, aceptas nuestros{" "}
+        <Link href="/terminos-de-servicio" className="text-purple-500 hover:underline">
+          Términos de Servicio
+        </Link>{" "}
+        y{" "}
+        <Link href="/politica-de-privacidad" className="text-purple-500 hover:underline">
+          Política de Privacidad
+        </Link>
+        .
+      </div>
     </div>
   )
 }

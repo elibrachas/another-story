@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
+import Link from "next/link"
 
 export function LoginDialog({
   open,
@@ -126,6 +127,18 @@ export function LoginDialog({
               Enviar enlace mágico
             </Button>
           </form>
+
+          <div className="text-xs text-muted-foreground text-center mt-2">
+            Al iniciar sesión, aceptas nuestros{" "}
+            <Link href="/terminos-de-servicio" className="text-purple-500 hover:underline">
+              Términos de Servicio
+            </Link>{" "}
+            y{" "}
+            <Link href="/politica-de-privacidad" className="text-purple-500 hover:underline">
+              Política de Privacidad
+            </Link>
+            .
+          </div>
         </div>
       </DialogContent>
     </Dialog>

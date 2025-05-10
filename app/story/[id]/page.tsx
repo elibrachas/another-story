@@ -105,7 +105,7 @@ export default function StoryPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          <div className="prose prose-invert max-w-none">
+          <div className="prose prose-invert max-w-none story-content">
             {story.content.split("\n\n").map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
             ))}

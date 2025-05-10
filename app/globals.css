@@ -57,3 +57,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Añadir estas clases para mejorar la legibilidad en modo claro */
+.text-muted-foreground {
+  @apply dark:text-gray-400 text-gray-600;
+}
+
+.story-content {
+  @apply dark:text-gray-300 text-gray-800;
+}

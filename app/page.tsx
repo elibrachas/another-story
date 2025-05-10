@@ -65,10 +65,10 @@ export default function Home() {
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Historias destacadas</h1>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <h1 className="text-3xl font-bold tracking-tight">Crónicas Laborales</h1>
           <Link href="/submit">
-            <Button className="bg-purple-600 hover:bg-purple-700">
+            <Button className="bg-purple-600 hover:bg-purple-700 order-last sm:order-none">
               <PlusCircle className="mr-2 h-4 w-4" />
               Comparte tu Historia
             </Button>
