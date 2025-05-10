@@ -5,10 +5,13 @@ import { isAuthorizedAdmin } from "./admin-utils"
 
 // Función auxiliar para verificar la autorización del administrador
 async function verifyAdminAccess(supabase: any) {
-  const { data } = await supabase.auth.getUser()
-  if (!data.user || !isAuthorizedAdmin(data.user.email)) {
+  // Usar getUser() en lugar de getSession()
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user || !isAuthorizedAdmin(data.user.email)) {
+    console.error("Error de verificación de admin:", error || "Usuario no autorizado")
     throw new Error("No autorizado")
   }
+  return data.user
 }
 
 export async function getAdminStories() {

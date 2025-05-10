@@ -9,17 +9,18 @@ import { isAuthorizedAdmin } from "@/lib/admin-utils"
 export default async function EmergencyPage() {
   const supabase = createServerComponentClient({ cookies })
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // Usar getUser() en lugar de getSession()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (userError || !userData.user) {
+    console.error("Error de autenticación:", userError)
     redirect("/auth")
   }
 
   // Verificar si el usuario actual está autorizado como administrador
-  const userEmail = session.user.email
+  const userEmail = userData.user.email
   if (!isAuthorizedAdmin(userEmail)) {
+    console.error("Usuario no autorizado:", userEmail)
     // Si no está autorizado, redirigir a la página principal
     redirect("/")
   }

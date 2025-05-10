@@ -29,8 +29,26 @@ export async function directApproveStory(storyId: string) {
       return { success: false, error: "No autorizado" }
     }
 
+    // Verificar si la historia existe antes de intentar actualizarla
+    const { data: storyCheck, error: checkError } = await supabase
+      .from("stories")
+      .select("id, title, published")
+      .eq("id", storyId)
+      .single()
+
+    if (checkError) {
+      console.error("[DIRECT-APPROVE] Error al verificar la historia:", checkError)
+      return { success: false, error: `Historia no encontrada: ${checkError.message}` }
+    }
+
+    if (storyCheck.published) {
+      console.log("[DIRECT-APPROVE] La historia ya está publicada:", storyCheck)
+      return { success: true, data: storyCheck, message: "La historia ya estaba publicada" }
+    }
+
     // Actualización directa en la base de datos
-    const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
+    console.log("[DIRECT-APPROVE] Actualizando historia a publicada...")
+    const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
 
     if (error) {
       console.error("[DIRECT-APPROVE] Error en la actualización:", error)
@@ -44,7 +62,7 @@ export async function directApproveStory(storyId: string) {
     revalidatePath("/admin")
     revalidatePath(`/story/${storyId}`)
 
-    return { success: true, data }
+    return { success: true, data: data || storyCheck, message: "Historia publicada correctamente" }
   } catch (error) {
     console.error("[DIRECT-APPROVE] Error inesperado:", error)
     return { success: false, error: String(error) }

@@ -23,16 +23,21 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   const [storyToReject, setStoryToReject] = useState<Story | null>(null)
   const [isApproving, setIsApproving] = useState<string | null>(null)
   const [isRejecting, setIsRejecting] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
   const { toast } = useToast()
 
   const handleApprove = async (storyId: string) => {
     try {
       setIsApproving(storyId)
+      setDebugInfo(null)
       console.log(`Intentando aprobar historia: ${storyId}`)
 
       // Usar la función de aprobación directa
       const result = await directApproveStory(storyId)
       console.log("Resultado de aprobación directa:", result)
+
+      // Guardar información de depuración
+      setDebugInfo(result)
 
       if (!result.success) {
         throw new Error(result.error || "Error al aprobar la historia")
@@ -43,7 +48,7 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
 
       toast({
         title: "Historia aprobada",
-        description: "La historia ha sido publicada en el sitio",
+        description: result.message || "La historia ha sido publicada en el sitio",
       })
 
       // Recargar la página para asegurar que los cambios se reflejen
@@ -54,7 +59,7 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
       console.error("Error al aprobar historia:", error)
       toast({
         title: "Error",
-        description: "Error al aprobar la historia. Por favor, inténtalo de nuevo.",
+        description: `Error al aprobar la historia: ${error instanceof Error ? error.message : "Error desconocido"}`,
         variant: "destructive",
       })
     } finally {
@@ -65,6 +70,7 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   const handleReject = async (storyId: string) => {
     try {
       setIsRejecting(true)
+      setDebugInfo(null)
       console.log(`Intentando rechazar historia: ${storyId}`)
 
       await rejectStory(storyId)
@@ -80,7 +86,7 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
       console.error("Error al rechazar historia:", error)
       toast({
         title: "Error",
-        description: "Error al rechazar la historia",
+        description: `Error al rechazar la historia: ${error instanceof Error ? error.message : "Error desconocido"}`,
         variant: "destructive",
       })
     } finally {
@@ -161,6 +167,13 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
                 </Button>
               </div>
             </div>
+
+            {/* Mostrar información de depuración si está disponible */}
+            {debugInfo && isApproving === story.id && (
+              <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              </div>
+            )}
           </div>
         ))}
       </div>
