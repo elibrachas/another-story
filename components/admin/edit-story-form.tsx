@@ -13,9 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Wand2, Save, ArrowLeft, Check } from "lucide-react"
-import { updateStory, improveStoryWithAI } from "@/lib/actions"
+import { Loader2, Wand2, Save, ArrowLeft, Check, Search } from "lucide-react"
+import { improveStoryWithAI } from "@/lib/actions"
 import type { Story, Tag } from "@/lib/types"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 const industries = [
   "Tecnología",
@@ -42,15 +50,18 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   const [industry, setIndustry] = useState(story.industry)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isImproving, setIsImproving] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
   const [publishAfterSave, setPublishAfterSave] = useState(false)
   const [activeTab, setActiveTab] = useState("original")
+  const [showDiagnosticDialog, setShowDiagnosticDialog] = useState(false)
+  const [diagnosticResult, setDiagnosticResult] = useState<any>(null)
   const router = useRouter()
   const { toast } = useToast()
 
   // Ordenar las etiquetas por nombre
   const sortedTags = [...allTags].sort((a, b) => a.name.localeCompare(b.name))
 
-  // Reemplazar completamente la función handleSubmit con esta versión más explícita
+  // Reemplazar completamente la función handleSubmit para usar la nueva API Route
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -75,9 +86,6 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     try {
       setIsSubmitting(true)
 
-      // Usar las etiquetas originales de la historia
-      const originalTagIds = story.tags?.map((tag) => tag.id) || []
-
       console.log("Enviando datos para guardar:", {
         id: story.id,
         title,
@@ -89,20 +97,30 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         publish: publishAfterSave,
       })
 
-      const result = await updateStory({
-        id: story.id,
-        title,
-        content: finalContent,
-        industry,
-        tags: originalTagIds,
-        customTags: [],
-        publish: publishAfterSave,
-        useImprovedContent: activeTab === "improved" && !!improvedContent,
+      // Usar la nueva API Route para actualizar la historia
+      const response = await fetch("/api/admin/update-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: story.id,
+          title,
+          content: finalContent,
+          industry,
+          publish: publishAfterSave,
+        }),
       })
 
-      if (!result.success) {
-        throw new Error(result.error || "Error al actualizar la historia")
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        const errorMessage = result.error || `Error ${response.status}`
+        console.error("Error al actualizar historia:", errorMessage)
+        throw new Error(errorMessage)
       }
+
+      console.log("Respuesta de la API:", result)
 
       toast({
         title: "Historia actualizada",
@@ -166,8 +184,33 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   const handleSelectImproved = () => {
     if (improvedContent) {
       setActiveTab("improved")
-      // Opcional: Actualizar el contenido original con el mejorado inmediatamente
-      // setContent(improvedContent);
+    }
+  }
+
+  // Función para verificar el contenido actual en la base de datos
+  const checkStoryInDatabase = async () => {
+    try {
+      setIsChecking(true)
+      const response = await fetch(`/api/admin/check-story?id=${story.id}`)
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        const errorMessage = result.error || `Error ${response.status}`
+        console.error("Error al verificar historia:", errorMessage)
+        throw new Error(errorMessage)
+      }
+
+      setDiagnosticResult(result.story)
+      setShowDiagnosticDialog(true)
+    } catch (error) {
+      console.error("Error al verificar historia:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al verificar la historia",
+        variant: "destructive",
+      })
+    } finally {
+      setIsChecking(false)
     }
   }
 
@@ -180,6 +223,16 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         </Button>
 
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={checkStoryInDatabase}
+            disabled={isChecking}
+            className="gap-2"
+          >
+            {isChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            Verificar en BD
+          </Button>
           <div className="flex items-center space-x-2">
             <Checkbox
               id="publish"
@@ -294,6 +347,41 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Diálogo de diagnóstico */}
+      <Dialog open={showDiagnosticDialog} onOpenChange={setShowDiagnosticDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Información de la historia en la base de datos</DialogTitle>
+            <DialogDescription>Esta es la información actual de la historia en la base de datos.</DialogDescription>
+          </DialogHeader>
+          {diagnosticResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="font-semibold">ID:</div>
+                <div>{diagnosticResult.id}</div>
+                <div className="font-semibold">Título:</div>
+                <div>{diagnosticResult.title}</div>
+                <div className="font-semibold">Industria:</div>
+                <div>{diagnosticResult.industry}</div>
+                <div className="font-semibold">Publicada:</div>
+                <div>{diagnosticResult.published ? "Sí" : "No"}</div>
+                <div className="font-semibold">Longitud del contenido:</div>
+                <div>{diagnosticResult.contentLength} caracteres</div>
+                <div className="font-semibold">Última actualización:</div>
+                <div>{new Date(diagnosticResult.updatedAt).toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="font-semibold">Vista previa del contenido:</div>
+                <div className="mt-2 p-2 border rounded-md bg-muted text-sm">{diagnosticResult.contentPreview}</div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowDiagnosticDialog(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   )
 }
