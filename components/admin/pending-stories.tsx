@@ -19,13 +19,29 @@ export function PendingStories({ stories }: { stories: Story[] }) {
       setIsProcessing(storyId)
       console.log(`Iniciando aprobación para historia ID: ${storyId}`)
 
-      const result = await adminApproveStory(storyId)
-      console.log("Resultado completo:", result)
+      // Intentar primero con el endpoint de API
+      const response = await fetch("/api/admin/approve-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storyId }),
+      })
 
-      if (!result.success) {
-        console.error("Error en aprobación:", result.error)
-        console.log("Logs de diagnóstico:", result.logs)
-        throw new Error(result.error || "Error al aprobar la historia")
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        console.error("Error en API Route, intentando con Server Action:", result.error)
+
+        // Si falla el endpoint de API, intentar con Server Action
+        const actionResult = await adminApproveStory(storyId)
+        console.log("Resultado de Server Action:", actionResult)
+
+        if (!actionResult.success) {
+          throw new Error(actionResult.error || "Error al aprobar la historia")
+        }
+      } else {
+        console.log("Aprobación exitosa mediante API Route:", result)
       }
 
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))

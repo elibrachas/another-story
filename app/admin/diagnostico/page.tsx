@@ -151,7 +151,6 @@ export default function DiagnosticoAprobacionPage() {
     }
   }
 
-  // Nueva función para usar la API directa con la clave proporcionada
   const handleDirectAPI = async () => {
     if (!storyId) return
 
@@ -188,6 +187,66 @@ export default function DiagnosticoAprobacionPage() {
         toast({
           title: "API Directa",
           description: "Operación completada",
+        })
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+      setLogs((prev) => [...prev, `Error inesperado: ${errorMessage}`])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Nueva función para usar el endpoint de API de Next.js
+  const handleApiEndpoint = async () => {
+    if (!storyId) return
+
+    try {
+      setIsLoading(true)
+      setLogs((prev) => [...prev, `Intentando aprobación mediante API Route de Next.js para historia ID: ${storyId}`])
+
+      const response = await fetch("/api/admin/approve-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storyId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        const errorMessage = result.error || `Error ${response.status}`
+        setLogs((prev) => [...prev, `Error en API Route: ${errorMessage}`])
+        toast({
+          title: "Error",
+          description: `Error en API Route: ${errorMessage}`,
+          variant: "destructive",
+        })
+      } else {
+        setLogs((prev) => [
+          ...prev,
+          `API Route ejecutada con éxito: ${result.message}`,
+          `Resultado: ${JSON.stringify(result.data || result.result)}`,
+        ])
+
+        // Verificar el estado actual
+        const { data: verifyData, error: verifyError } = await supabase
+          .from("stories")
+          .select("*")
+          .eq("id", storyId)
+          .single()
+
+        if (verifyError) {
+          setLogs((prev) => [...prev, `Error al verificar estado final: ${verifyError.message}`])
+        } else {
+          setLogs((prev) => [...prev, `Estado final verificado: ${JSON.stringify(verifyData)}`])
+          setStoryDetails(verifyData)
+        }
+
+        toast({
+          title: "API Route",
+          description: result.message,
         })
       }
     } catch (error) {
@@ -273,6 +332,13 @@ export default function DiagnosticoAprobacionPage() {
               className="bg-purple-600 hover:bg-purple-700 text-white"
             >
               API Directa con Clave
+            </Button>
+            <Button
+              onClick={handleApiEndpoint}
+              disabled={isLoading || !storyId}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              API Route con Service Role
             </Button>
           </div>
 
