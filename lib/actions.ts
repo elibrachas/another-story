@@ -31,6 +31,7 @@ export async function createInitialProfile() {
     const { error } = await supabase.from("profiles").insert({
       id: user.id,
       username: username,
+      email: user.email,
       admin: false, // Asegurarse de que los nuevos usuarios no sean administradores
     })
 
@@ -159,7 +160,11 @@ export async function submitComment({
   storyId,
   content,
   isAnonymous,
-}: { storyId: string; content: string; isAnonymous: boolean }) {
+}: {
+  storyId: string
+  content: string
+  isAnonymous: boolean
+}) {
   const supabase = createServerActionClient({ cookies })
 
   try {
@@ -314,7 +319,12 @@ export async function updateProfile({
   bio,
   website,
   regenerateUsername,
-}: { displayName?: string; bio?: string; website?: string; regenerateUsername?: boolean }) {
+}: {
+  displayName?: string
+  bio?: string
+  website?: string
+  regenerateUsername?: boolean
+}) {
   const supabase = createServerActionClient({ cookies })
 
   try {
@@ -360,133 +370,197 @@ export async function updateProfile({
   }
 }
 
-// Añadir estas funciones al final del archivo
-
-export async function approveStory(storyId: string) {
+// Nuevas funciones de administración
+export async function adminApproveStory(storyId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = createServerActionClient({ cookies })
 
   try {
-    // Verificar autenticación
+    // Verificar si el usuario es administrador
     const { data: userData } = await supabase.auth.getUser()
-
     if (!userData.user) {
-      console.error("No hay usuario autenticado")
-      throw new Error("No autenticado")
+      return { success: false, error: "No autenticado" }
     }
 
-    console.log("Usuario autenticado:", userData.user.id, userData.user.email)
+    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
 
-    // Verificar si el usuario es administrador consultando la tabla profiles
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("admin")
-      .eq("id", userData.user.id)
-      .single()
-
-    if (profileError) {
-      console.error("Error al verificar si el usuario es administrador:", profileError)
-      throw new Error("Error al verificar permisos de administrador")
+    if (!profileData?.admin) {
+      return { success: false, error: "No tienes permisos de administrador" }
     }
 
-    if (!profileData || !profileData.admin) {
-      console.error("El usuario no es administrador:", userData.user.id)
-      throw new Error("No autorizado")
-    }
-
-    console.log("Usuario es administrador, procediendo a aprobar historia:", storyId)
-
-    // Verificar el estado actual de la historia antes de actualizarla
-    const { data: storyBefore, error: storyBeforeError } = await supabase
-      .from("stories")
-      .select("id, title, published")
-      .eq("id", storyId)
-      .single()
-
-    if (storyBeforeError) {
-      console.error("Error al obtener el estado actual de la historia:", storyBeforeError)
-    } else {
-      console.log("Estado actual de la historia:", storyBefore)
-    }
-
-    // Actualizar la historia a publicada
-    const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
+    // Aprobar la historia
+    const { error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
 
     if (error) {
-      console.error("Error al aprobar historia:", error)
-      throw new Error(error.message)
+      console.error("Error approving story:", error)
+      return { success: false, error: error.message }
     }
 
-    console.log("Historia aprobada correctamente:", data)
-
-    // Verificar el estado de la historia después de actualizarla
-    const { data: storyAfter, error: storyAfterError } = await supabase
-      .from("stories")
-      .select("id, title, published")
-      .eq("id", storyId)
-      .single()
-
-    if (storyAfterError) {
-      console.error("Error al obtener el estado actualizado de la historia:", storyAfterError)
-    } else {
-      console.log("Estado actualizado de la historia:", storyAfter)
-    }
-
-    // Revalidar rutas
-    revalidatePath("/")
     revalidatePath("/admin")
-    revalidatePath(`/story/${storyId}`)
-
-    return { success: true, data }
+    revalidatePath("/")
+    return { success: true }
   } catch (error) {
-    console.error("Error en la acción de aprobar historia:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error al aprobar historia",
-    }
+    console.error("Error in adminApproveStory action:", error)
+    return { success: false, error: "Failed to approve story" }
   }
 }
 
-export async function rejectStory(storyId: string) {
+export async function adminRejectStory(storyId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = createServerActionClient({ cookies })
 
   try {
-    // Verificar autenticación
+    // Verificar si el usuario es administrador
     const { data: userData } = await supabase.auth.getUser()
-
     if (!userData.user) {
-      throw new Error("No autenticado")
+      return { success: false, error: "No autenticado" }
     }
 
-    // Verificar si el usuario es administrador consultando la tabla profiles
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("admin")
-      .eq("id", userData.user.id)
-      .single()
+    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
 
-    if (profileError || !profileData || !profileData.admin) {
-      throw new Error("No autorizado")
+    if (!profileData?.admin) {
+      return { success: false, error: "No tienes permisos de administrador" }
     }
-
-    console.log(`Rechazando historia con ID: ${storyId}`)
 
     // Eliminar la historia
     const { error } = await supabase.from("stories").delete().eq("id", storyId)
 
     if (error) {
-      console.error("Error al rechazar historia:", error)
-      throw new Error(error.message)
+      console.error("Error rejecting story:", error)
+      return { success: false, error: error.message }
     }
 
-    // Revalidar rutas
     revalidatePath("/admin")
-
     return { success: true }
   } catch (error) {
-    console.error("Error en la acción de rechazar historia:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error al rechazar historia",
+    console.error("Error in adminRejectStory action:", error)
+    return { success: false, error: "Failed to reject story" }
+  }
+}
+
+export async function adminDeleteComment(commentId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = createServerActionClient({ cookies })
+
+  try {
+    // Verificar si el usuario es administrador
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { success: false, error: "No autenticado" }
     }
+
+    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
+
+    if (!profileData?.admin) {
+      return { success: false, error: "No tienes permisos de administrador" }
+    }
+
+    // Eliminar el comentario
+    const { error } = await supabase.from("comments").delete().eq("id", commentId)
+
+    if (error) {
+      console.error("Error deleting comment:", error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in adminDeleteComment action:", error)
+    return { success: false, error: "Failed to delete comment" }
+  }
+}
+
+export async function getAppStats(): Promise<{ success: boolean; stats?: any; error?: string }> {
+  const supabase = createServerActionClient({ cookies })
+
+  try {
+    // Verificar si el usuario es administrador
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { success: false, error: "No autenticado" }
+    }
+
+    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
+
+    if (!profileData?.admin) {
+      return { success: false, error: "No tienes permisos de administrador" }
+    }
+
+    // Obtener estadísticas
+    const [
+      totalStoriesResult,
+      pendingStoriesResult,
+      publishedStoriesResult,
+      totalCommentsResult,
+      totalUsersResult,
+      newUsersResult,
+      totalUpvotesResult,
+    ] = await Promise.all([
+      supabase.from("stories").select("id", { count: "exact" }),
+      supabase.from("stories").select("id", { count: "exact" }).eq("published", false),
+      supabase.from("stories").select("id", { count: "exact" }).eq("published", true),
+      supabase.from("comments").select("id", { count: "exact" }),
+      supabase.from("profiles").select("id", { count: "exact" }),
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact" })
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from("stories").select("upvotes").eq("published", true),
+    ])
+
+    // Calcular total de votos
+    const totalUpvotes = totalUpvotesResult.data?.reduce((sum, story) => sum + (story.upvotes || 0), 0) || 0
+
+    const stats = {
+      totalStories: totalStoriesResult.count || 0,
+      pendingStories: pendingStoriesResult.count || 0,
+      publishedStories: publishedStoriesResult.count || 0,
+      totalComments: totalCommentsResult.count || 0,
+      totalUsers: totalUsersResult.count || 0,
+      newUsers: newUsersResult.count || 0,
+      totalUpvotes: totalUpvotes,
+    }
+
+    return { success: true, stats }
+  } catch (error) {
+    console.error("Error in getAppStats action:", error)
+    return { success: false, error: "Failed to get app stats" }
+  }
+}
+
+export async function approveStory(storyId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = createServerActionClient({ cookies })
+
+  try {
+    const { error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
+
+    if (error) {
+      console.error("Error approving story:", error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath("/admin")
+    revalidatePath("/")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in approveStory action:", error)
+    return { success: false, error: "Failed to approve story" }
+  }
+}
+
+export async function rejectStory(storyId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = createServerActionClient({ cookies })
+
+  try {
+    const { error } = await supabase.from("stories").delete().eq("id", storyId)
+
+    if (error) {
+      console.error("Error rejecting story:", error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in rejectStory action:", error)
+    return { success: false, error: "Failed to reject story" }
   }
 }
