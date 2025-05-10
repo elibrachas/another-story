@@ -5,160 +5,245 @@ import type { Story, Comment, Tag } from "./types"
 export async function getStories() {
   const supabase = createServerComponentClient({ cookies })
 
-  // Obtener solo historias publicadas
-  const { data: stories, error } = await supabase
-    .from("stories")
-    .select("*, story_tags(tag_id)")
-    .eq("published", true)
-    .order("created_at", { ascending: false })
+  try {
+    // Obtener solo historias publicadas
+    const { data: stories, error } = await supabase
+      .from("stories")
+      .select("*, story_tags(tag_id)")
+      .eq("published", true)
+      .order("created_at", { ascending: false })
 
-  if (error) {
-    console.error("Error al obtener historias:", error)
+    if (error) {
+      console.error("Error al obtener historias:", error)
+      return []
+    }
+
+    if (!stories || stories.length === 0) return []
+
+    // Obtener todas las etiquetas para las historias
+    const storyIds = stories.map((story) => story.id)
+    const { data: storyTags, error: tagsError } = await supabase
+      .from("story_tags")
+      .select("story_id, tags(*)")
+      .in("story_id", storyIds)
+
+    if (tagsError) {
+      console.error("Error al obtener etiquetas:", tagsError)
+    }
+
+    // Agrupar etiquetas por historia
+    const tagsByStory: Record<string, Tag[]> = {}
+    storyTags?.forEach((item) => {
+      if (!tagsByStory[item.story_id]) {
+        tagsByStory[item.story_id] = []
+      }
+      tagsByStory[item.story_id].push(item.tags)
+    })
+
+    // Añadir etiquetas a cada historia
+    const storiesWithTags = stories.map((story) => ({
+      ...story,
+      tags: tagsByStory[story.id] || [],
+    }))
+
+    return storiesWithTags as Story[]
+  } catch (error) {
+    console.error("Error inesperado al obtener historias:", error)
     return []
   }
-
-  if (!stories || stories.length === 0) return []
-
-  // Obtener todas las etiquetas para las historias
-  const storyIds = stories.map((story) => story.id)
-  const { data: storyTags, error: tagsError } = await supabase
-    .from("story_tags")
-    .select("story_id, tags(*)")
-    .in("story_id", storyIds)
-
-  if (tagsError) {
-    console.error("Error al obtener etiquetas:", tagsError)
-  }
-
-  // Agrupar etiquetas por historia
-  const tagsByStory: Record<string, Tag[]> = {}
-  storyTags?.forEach((item) => {
-    if (!tagsByStory[item.story_id]) {
-      tagsByStory[item.story_id] = []
-    }
-    tagsByStory[item.story_id].push(item.tags)
-  })
-
-  // Añadir etiquetas a cada historia
-  const storiesWithTags = stories.map((story) => ({
-    ...story,
-    tags: tagsByStory[story.id] || [],
-  }))
-
-  return storiesWithTags as Story[]
 }
 
 export async function getStoryById(id: string) {
   const supabase = createServerComponentClient({ cookies })
 
-  const { data: story } = await supabase.from("stories").select("*").eq("id", id).single()
+  try {
+    const { data: story, error } = await supabase.from("stories").select("*").eq("id", id).single()
 
-  if (!story) return null
+    if (error) {
+      console.error("Error al obtener historia:", error)
+      return null
+    }
 
-  // Obtener etiquetas para la historia
-  const { data: storyTags } = await supabase.from("story_tags").select("tags(*)").eq("story_id", id)
+    if (!story) return null
 
-  const tags = storyTags?.map((item) => item.tags) || []
+    // Obtener etiquetas para la historia
+    const { data: storyTags, error: tagsError } = await supabase.from("story_tags").select("tags(*)").eq("story_id", id)
 
-  return { ...story, tags } as Story
+    if (tagsError) {
+      console.error("Error al obtener etiquetas para historia:", tagsError)
+    }
+
+    const tags = storyTags?.map((item) => item.tags) || []
+
+    return { ...story, tags } as Story
+  } catch (error) {
+    console.error("Error inesperado al obtener historia:", error)
+    return null
+  }
 }
 
 export async function getAdminStories() {
   const supabase = createServerComponentClient({ cookies })
 
-  const { data: stories } = await supabase
-    .from("stories")
-    .select("*")
-    .eq("published", false)
-    .order("created_at", { ascending: false })
+  try {
+    const { data: stories, error } = await supabase
+      .from("stories")
+      .select("*")
+      .eq("published", false)
+      .order("created_at", { ascending: false })
 
-  return (stories as Story[]) || []
+    if (error) {
+      console.error("Error al obtener historias de administración:", error)
+      return []
+    }
+
+    return (stories as Story[]) || []
+  } catch (error) {
+    console.error("Error inesperado al obtener historias de administración:", error)
+    return []
+  }
 }
 
 export async function getCommentsByStoryId(storyId: string) {
   const supabase = createServerComponentClient({ cookies })
 
-  const { data } = await supabase
-    .from("comments")
-    .select("*")
-    .eq("story_id", storyId)
-    .order("created_at", { ascending: true })
+  try {
+    const { data, error } = await supabase
+      .from("comments")
+      .select("*")
+      .eq("story_id", storyId)
+      .order("created_at", { ascending: true })
 
-  return (data as Comment[]) || []
+    if (error) {
+      console.error("Error al obtener comentarios:", error)
+      return []
+    }
+
+    return (data as Comment[]) || []
+  } catch (error) {
+    console.error("Error inesperado al obtener comentarios:", error)
+    return []
+  }
 }
 
 export async function getAllTags() {
   const supabase = createServerComponentClient({ cookies })
 
-  // Obtener todas las etiquetas
-  const { data: tags } = await supabase.from("tags").select("*").order("name", { ascending: true })
-
-  if (!tags) return []
-
-  // Realizar consultas separadas para obtener el recuento de cada etiqueta
-  // En lugar de intentar hacer un GROUP BY que no funciona bien con la API de Supabase
-  const tagCounts: Record<string, number> = {}
-
-  // Obtener el recuento de cada etiqueta manualmente
-  for (const tag of tags) {
-    const { count, error } = await supabase
-      .from("story_tags")
-      .select("*", { count: "exact", head: true })
-      .eq("tag_id", tag.id)
+  try {
+    // Obtener todas las etiquetas
+    const { data: tags, error } = await supabase.from("tags").select("*").order("name", { ascending: true })
 
     if (error) {
-      console.error(`Error al obtener recuento para etiqueta ${tag.id}:`, error)
-      tagCounts[tag.id] = 0
-    } else {
-      tagCounts[tag.id] = count || 0
+      console.error("Error al obtener etiquetas:", error)
+      return []
     }
+
+    if (!tags || tags.length === 0) return []
+
+    // En lugar de hacer consultas individuales para cada etiqueta,
+    // vamos a hacer una sola consulta para obtener todos los story_tags
+    // y luego calcular los recuentos en memoria
+    const { data: allStoryTags, error: storyTagsError } = await supabase
+      .from("story_tags")
+      .select("tag_id, story_id, stories!inner(published)")
+      .eq("stories.published", true)
+
+    if (storyTagsError) {
+      console.error("Error al obtener story_tags:", storyTagsError)
+      // Continuar con recuentos en 0 si hay error
+    }
+
+    // Calcular recuentos en memoria
+    const tagCounts: Record<string, number> = {}
+
+    // Inicializar todos los recuentos en 0
+    tags.forEach((tag) => {
+      tagCounts[tag.id] = 0
+    })
+
+    // Contar las apariciones de cada etiqueta
+    if (allStoryTags) {
+      allStoryTags.forEach((item) => {
+        if (tagCounts[item.tag_id] !== undefined) {
+          tagCounts[item.tag_id]++
+        }
+      })
+    }
+
+    // Añadir el recuento a cada etiqueta
+    const tagsWithCount = tags.map((tag) => ({
+      ...tag,
+      count: tagCounts[tag.id] || 0,
+    }))
+
+    // Ordenar por recuento (más populares primero)
+    return tagsWithCount.sort((a, b) => (b.count || 0) - (a.count || 0)) as Tag[]
+  } catch (error) {
+    console.error("Error inesperado al obtener todas las etiquetas:", error)
+    return []
   }
-
-  // Añadir el recuento a cada etiqueta
-  const tagsWithCount = tags.map((tag) => ({
-    ...tag,
-    count: tagCounts[tag.id] || 0,
-  }))
-
-  // Ordenar por recuento (más populares primero)
-  return tagsWithCount.sort((a, b) => (b.count || 0) - (a.count || 0)) as Tag[]
 }
 
 export async function getStoriesByTag(tagId: string) {
   const supabase = createServerComponentClient({ cookies })
 
-  const { data: storyTags } = await supabase.from("story_tags").select("story_id").eq("tag_id", tagId)
+  try {
+    const { data: storyTags, error: storyTagsError } = await supabase
+      .from("story_tags")
+      .select("story_id")
+      .eq("tag_id", tagId)
 
-  if (!storyTags || storyTags.length === 0) return []
-
-  const storyIds = storyTags.map((item) => item.story_id)
-
-  const { data: stories } = await supabase
-    .from("stories")
-    .select("*")
-    .in("id", storyIds)
-    .eq("published", true)
-    .order("created_at", { ascending: false })
-
-  if (!stories) return []
-
-  // Obtener todas las etiquetas para las historias
-  const { data: allStoryTags } = await supabase.from("story_tags").select("story_id, tags(*)").in("story_id", storyIds)
-
-  // Agrupar etiquetas por historia
-  const tagsByStory: Record<string, Tag[]> = {}
-  allStoryTags?.forEach((item) => {
-    if (!tagsByStory[item.story_id]) {
-      tagsByStory[item.story_id] = []
+    if (storyTagsError) {
+      console.error("Error al obtener story_tags por etiqueta:", storyTagsError)
+      return []
     }
-    tagsByStory[item.story_id].push(item.tags)
-  })
 
-  // Añadir etiquetas a cada historia
-  const storiesWithTags = stories.map((story) => ({
-    ...story,
-    tags: tagsByStory[story.id] || [],
-  }))
+    if (!storyTags || storyTags.length === 0) return []
 
-  return storiesWithTags as Story[]
+    const storyIds = storyTags.map((item) => item.story_id)
+
+    const { data: stories, error: storiesError } = await supabase
+      .from("stories")
+      .select("*")
+      .in("id", storyIds)
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+
+    if (storiesError) {
+      console.error("Error al obtener historias por etiqueta:", storiesError)
+      return []
+    }
+
+    if (!stories || stories.length === 0) return []
+
+    // Obtener todas las etiquetas para las historias
+    const { data: allStoryTags, error: tagsError } = await supabase
+      .from("story_tags")
+      .select("story_id, tags(*)")
+      .in("story_id", storyIds)
+
+    if (tagsError) {
+      console.error("Error al obtener etiquetas para historias por etiqueta:", tagsError)
+    }
+
+    // Agrupar etiquetas por historia
+    const tagsByStory: Record<string, Tag[]> = {}
+    allStoryTags?.forEach((item) => {
+      if (!tagsByStory[item.story_id]) {
+        tagsByStory[item.story_id] = []
+      }
+      tagsByStory[item.story_id].push(item.tags)
+    })
+
+    // Añadir etiquetas a cada historia
+    const storiesWithTags = stories.map((story) => ({
+      ...story,
+      tags: tagsByStory[story.id] || [],
+    }))
+
+    return storiesWithTags as Story[]
+  } catch (error) {
+    console.error("Error inesperado al obtener historias por etiqueta:", error)
+    return []
+  }
 }

@@ -1,3 +1,5 @@
+"use client"
+
 import { StoryCard } from "@/components/story-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -8,12 +10,24 @@ import { TagBadge } from "@/components/tag-badge"
 
 export default async function Home() {
   try {
-    const [stories, tags] = await Promise.all([getStories(), getAllTags()])
+    // Obtener historias y etiquetas con manejo de errores
+    let stories = []
+    let tags = []
+
+    try {
+      stories = await getStories()
+    } catch (error) {
+      console.error("Error al cargar historias:", error)
+    }
+
+    try {
+      tags = await getAllTags()
+    } catch (error) {
+      console.error("Error al cargar etiquetas:", error)
+    }
 
     // Verificar que solo se muestren historias publicadas
     const publishedStories = stories.filter((story) => story.published === true)
-
-    console.log(`Mostrando ${publishedStories.length} historias publicadas`)
 
     return (
       <div className="space-y-8">
@@ -88,10 +102,13 @@ export default async function Home() {
     console.error("Error en la página principal:", error)
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold mb-4">Error al cargar historias</h2>
-        <p className="text-muted-foreground">
-          Ha ocurrido un error al cargar las historias. Por favor, inténtalo de nuevo más tarde.
+        <h2 className="text-2xl font-bold mb-4">Error al cargar contenido</h2>
+        <p className="text-muted-foreground mb-6">
+          Ha ocurrido un error al cargar el contenido. Por favor, inténtalo de nuevo más tarde.
         </p>
+        <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
+          Reintentar
+        </Button>
       </div>
     )
   }

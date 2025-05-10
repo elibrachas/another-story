@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Check, X, Eye, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
-import { approveStory, rejectStory } from "@/lib/actions"
 import type { Story } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -26,13 +25,21 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
 
   const handleApprove = async (storyId: string) => {
     try {
+      // Mostrar estado de carga
       setIsApproving(storyId)
 
       // Llamar a la acción del servidor para aprobar la historia
-      const result = await approveStory(storyId)
+      const response = await fetch("/api/admin/approve-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storyId }),
+      })
 
-      if (!result || !result.success) {
-        throw new Error("No se pudo aprobar la historia")
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Error al aprobar la historia")
       }
 
       // Actualizar el estado local para reflejar el cambio inmediatamente
@@ -42,9 +49,6 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
         title: "Historia aprobada",
         description: "La historia ha sido publicada en el sitio",
       })
-
-      // Forzar una recarga de la página para asegurar que los cambios se reflejen
-      window.location.reload()
     } catch (error) {
       console.error("Error al aprobar historia:", error)
       toast({
@@ -60,9 +64,23 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   const handleReject = async (storyId: string) => {
     try {
       setIsRejecting(true)
-      await rejectStory(storyId)
+
+      const response = await fetch("/api/admin/reject-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storyId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Error al rechazar la historia")
+      }
+
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
       setStoryToReject(null)
+
       toast({
         title: "Historia rechazada",
         description: "La historia ha sido eliminada",
@@ -134,7 +152,11 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
                   title="Aprobar historia"
                   disabled={isApproving === story.id}
                 >
-                  <Check className="h-4 w-4" />
+                  {isApproving === story.id ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
                 </Button>
                 <Button
                   onClick={() => setStoryToReject(story)}
@@ -180,7 +202,14 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
               onClick={() => storyToReject && handleReject(storyToReject.id)}
               disabled={isRejecting}
             >
-              {isRejecting ? "Rechazando..." : "Rechazar"}
+              {isRejecting ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Rechazando...
+                </>
+              ) : (
+                "Rechazar"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

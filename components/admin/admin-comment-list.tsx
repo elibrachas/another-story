@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Check, X, Eye, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
-import { approveComment, rejectComment } from "@/lib/actions"
 import type { AdminComment } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -20,40 +19,78 @@ import {
 export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
   const [pendingComments, setPendingComments] = useState(comments)
   const [commentToReject, setCommentToReject] = useState<AdminComment | null>(null)
+  const [isApproving, setIsApproving] = useState<string | null>(null)
+  const [isRejecting, setIsRejecting] = useState(false)
   const { toast } = useToast()
 
   const handleApprove = async (commentId: string) => {
     try {
-      await approveComment(commentId)
+      setIsApproving(commentId)
+
+      const response = await fetch("/api/admin/approve-comment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ commentId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Error al aprobar el comentario")
+      }
+
       setPendingComments((prev) => prev.filter((comment) => comment.id !== commentId))
+
       toast({
         title: "Comentario aprobado",
         description: "El comentario ha sido publicado",
       })
     } catch (error) {
+      console.error("Error al aprobar comentario:", error)
       toast({
         title: "Error",
         description: "Error al aprobar el comentario",
         variant: "destructive",
       })
+    } finally {
+      setIsApproving(null)
     }
   }
 
   const handleReject = async (commentId: string) => {
     try {
-      await rejectComment(commentId)
+      setIsRejecting(true)
+
+      const response = await fetch("/api/admin/reject-comment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ commentId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Error al rechazar el comentario")
+      }
+
       setPendingComments((prev) => prev.filter((comment) => comment.id !== commentId))
       setCommentToReject(null)
+
       toast({
         title: "Comentario rechazado",
         description: "El comentario ha sido eliminado",
       })
     } catch (error) {
+      console.error("Error al rechazar comentario:", error)
       toast({
         title: "Error",
         description: "Error al rechazar el comentario",
         variant: "destructive",
       })
+    } finally {
+      setIsRejecting(false)
     }
   }
 
@@ -100,8 +137,13 @@ export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
                   size="icon"
                   className="text-green-500"
                   title="Aprobar comentario"
+                  disabled={isApproving === comment.id}
                 >
-                  <Check className="h-4 w-4" />
+                  {isApproving === comment.id ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
                 </Button>
                 <Button
                   onClick={() => setCommentToReject(comment)}
@@ -109,6 +151,7 @@ export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
                   size="icon"
                   className="text-red-500"
                   title="Rechazar comentario"
+                  disabled={isApproving === comment.id}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -138,11 +181,22 @@ export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCommentToReject(null)}>
+            <Button variant="outline" onClick={() => setCommentToReject(null)} disabled={isRejecting}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={() => commentToReject && handleReject(commentToReject.id)}>
-              Rechazar
+            <Button
+              variant="destructive"
+              onClick={() => commentToReject && handleReject(commentToReject.id)}
+              disabled={isRejecting}
+            >
+              {isRejecting ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Rechazando...
+                </>
+              ) : (
+                "Rechazar"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
