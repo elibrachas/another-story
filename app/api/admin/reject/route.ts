@@ -1,23 +1,24 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { isAuthorizedAdmin } from "@/lib/admin-utils"
 import { revalidatePath } from "next/cache"
+
+// Lista de correos electrónicos autorizados como administradores
+const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
 
 export async function POST(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
 
     // Verificar autenticación
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
       return NextResponse.json({ message: "No autenticado" }, { status: 401 })
     }
 
-    // Verificar si es administrador
-    if (!isAuthorizedAdmin(session.user.email)) {
+    // Verificar si el usuario es administrador
+    const isAdmin = ADMIN_EMAILS.includes(userData.user.email?.toLowerCase() || "")
+    if (!isAdmin) {
       return NextResponse.json({ message: "No autorizado" }, { status: 403 })
     }
 

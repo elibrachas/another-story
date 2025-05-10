@@ -5,44 +5,80 @@ import { Button } from "@/components/ui/button"
 import { Check, X, Eye } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
-import { approveStory, rejectStory } from "@/lib/actions"
 import type { Story } from "@/lib/types"
 
 export function AdminStoryList({ stories }: { stories: Story[] }) {
   const [pendingStories, setPendingStories] = useState(stories)
+  const [isProcessing, setIsProcessing] = useState<string | null>(null)
   const { toast } = useToast()
 
   const handleApprove = async (storyId: string) => {
     try {
-      await approveStory(storyId)
+      setIsProcessing(storyId)
+
+      const response = await fetch("/api/admin/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Error al aprobar la historia")
+      }
+
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
+
       toast({
         title: "Historia aprobada",
-        description: "La historia ha sido publicada en el sitio",
+        description: "La historia ha sido publicada correctamente",
       })
     } catch (error) {
+      console.error("Error al aprobar historia:", error)
       toast({
         title: "Error",
-        description: "Error al aprobar la historia",
+        description: error instanceof Error ? error.message : "Error al aprobar la historia",
         variant: "destructive",
       })
+    } finally {
+      setIsProcessing(null)
     }
   }
 
   const handleReject = async (storyId: string) => {
+    if (!confirm("¿Estás seguro de que quieres rechazar esta historia? Esta acción no se puede deshacer.")) {
+      return
+    }
+
     try {
-      await rejectStory(storyId)
+      setIsProcessing(storyId)
+
+      const response = await fetch("/api/admin/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Error al rechazar la historia")
+      }
+
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
+
       toast({
         title: "Historia rechazada",
-        description: "La historia ha sido eliminada",
+        description: "La historia ha sido eliminada correctamente",
       })
     } catch (error) {
+      console.error("Error al rechazar historia:", error)
       toast({
         title: "Error",
-        description: "Error al rechazar la historia",
+        description: error instanceof Error ? error.message : "Error al rechazar la historia",
         variant: "destructive",
       })
+    } finally {
+      setIsProcessing(null)
     }
   }
 
@@ -55,9 +91,9 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
   }
 
   return (
-    <div className="divide-y">
+    <div className="space-y-4">
       {pendingStories.map((story) => (
-        <div key={story.id} className="py-4">
+        <div key={story.id} className="p-4 border rounded-lg">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-medium">{story.title}</h3>
@@ -72,10 +108,26 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
                   <Eye className="h-4 w-4" />
                 </Button>
               </Link>
-              <Button onClick={() => handleApprove(story.id)} variant="outline" size="icon" className="text-green-500">
-                <Check className="h-4 w-4" />
+              <Button
+                onClick={() => handleApprove(story.id)}
+                variant="outline"
+                size="icon"
+                className="text-green-500"
+                disabled={isProcessing === story.id}
+              >
+                {isProcessing === story.id ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
               </Button>
-              <Button onClick={() => handleReject(story.id)} variant="outline" size="icon" className="text-red-500">
+              <Button
+                onClick={() => handleReject(story.id)}
+                variant="outline"
+                size="icon"
+                className="text-red-500"
+                disabled={isProcessing === story.id}
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
