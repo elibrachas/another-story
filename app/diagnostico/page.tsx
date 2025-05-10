@@ -120,7 +120,7 @@ export default function DiagnosticoPage() {
   }
 
   const testAdminApproval = async () => {
-    if (!profileInfo?.is_admin) {
+    if (!profileInfo?.admin) {
       toast({
         title: "Error",
         description: "Debes ser administrador para probar esta función",
@@ -223,7 +223,7 @@ export default function DiagnosticoPage() {
             <Button onClick={testWriteConnection} disabled={isTestingWrite}>
               Probar Escritura
             </Button>
-            {profileInfo?.is_admin && (
+            {profileInfo?.admin && (
               <Button onClick={testAdminApproval} disabled={isLoading} className="bg-purple-600 hover:bg-purple-700">
                 Probar Aprobación Admin
               </Button>

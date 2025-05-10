@@ -16,11 +16,11 @@ export default async function AdminPage() {
   // Verificar si el usuario es administrador consultando la tabla profiles
   const { data: profileData, error: profileError } = await supabase
     .from("profiles")
-    .select("is_admin")
+    .select("admin")
     .eq("id", userData.user.id)
     .single()
 
-  if (profileError || !profileData || !profileData.is_admin) {
+  if (profileError || !profileData || !profileData.admin) {
     redirect("/")
   }
 

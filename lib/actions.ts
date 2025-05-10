@@ -31,6 +31,7 @@ export async function createInitialProfile() {
     const { error } = await supabase.from("profiles").insert({
       id: user.id,
       username: username,
+      admin: false, // Asegurarse de que los nuevos usuarios no sean administradores
     })
 
     if (error) {
@@ -378,7 +379,7 @@ export async function approveStory(storyId: string) {
     // Verificar si el usuario es administrador consultando la tabla profiles
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("is_admin")
+      .select("admin")
       .eq("id", userData.user.id)
       .single()
 
@@ -387,7 +388,7 @@ export async function approveStory(storyId: string) {
       throw new Error("Error al verificar permisos de administrador")
     }
 
-    if (!profileData || !profileData.is_admin) {
+    if (!profileData || !profileData.admin) {
       console.error("El usuario no es administrador:", userData.user.id)
       throw new Error("No autorizado")
     }
@@ -459,11 +460,11 @@ export async function rejectStory(storyId: string) {
     // Verificar si el usuario es administrador consultando la tabla profiles
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("is_admin")
+      .select("admin")
       .eq("id", userData.user.id)
       .single()
 
-    if (profileError || !profileData || !profileData.is_admin) {
+    if (profileError || !profileData || !profileData.admin) {
       throw new Error("No autorizado")
     }
 

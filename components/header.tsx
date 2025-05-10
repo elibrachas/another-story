@@ -23,7 +23,7 @@ export default function Header() {
     async function checkAdminStatus() {
       if (session?.user?.id) {
         try {
-          const { data, error } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single()
+          const { data, error } = await supabase.from("profiles").select("admin").eq("id", session.user.id).single()
 
           if (error) {
             console.error("Error al verificar estado de administrador:", error)
@@ -31,7 +31,7 @@ export default function Header() {
             return
           }
 
-          setIsAdmin(data?.is_admin || false)
+          setIsAdmin(data?.admin || false)
         } catch (error) {
           console.error("Error al verificar estado de administrador:", error)
           setIsAdmin(false)
