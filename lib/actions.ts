@@ -364,24 +364,48 @@ export async function updateProfile({
 export async function approveStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  // Lista de correos electrónicos autorizados como administradores
-  const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
-
   try {
     // Verificar autenticación
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) {
+      console.error("No hay usuario autenticado")
       throw new Error("No autenticado")
     }
 
-    // Verificar si el usuario es administrador
-    const isAdmin = ADMIN_EMAILS.includes(userData.user.email?.toLowerCase() || "")
-    if (!isAdmin) {
+    console.log("Usuario autenticado:", userData.user.id, userData.user.email)
+
+    // Verificar si el usuario es administrador consultando la tabla profiles
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", userData.user.id)
+      .single()
+
+    if (profileError) {
+      console.error("Error al verificar si el usuario es administrador:", profileError)
+      throw new Error("Error al verificar permisos de administrador")
+    }
+
+    if (!profileData || !profileData.is_admin) {
+      console.error("El usuario no es administrador:", userData.user.id)
       throw new Error("No autorizado")
     }
 
-    console.log(`Aprobando historia con ID: ${storyId}`)
+    console.log("Usuario es administrador, procediendo a aprobar historia:", storyId)
+
+    // Verificar el estado actual de la historia antes de actualizarla
+    const { data: storyBefore, error: storyBeforeError } = await supabase
+      .from("stories")
+      .select("id, title, published")
+      .eq("id", storyId)
+      .single()
+
+    if (storyBeforeError) {
+      console.error("Error al obtener el estado actual de la historia:", storyBeforeError)
+    } else {
+      console.log("Estado actual de la historia:", storyBefore)
+    }
 
     // Actualizar la historia a publicada
     const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
@@ -389,6 +413,21 @@ export async function approveStory(storyId: string) {
     if (error) {
       console.error("Error al aprobar historia:", error)
       throw new Error(error.message)
+    }
+
+    console.log("Historia aprobada correctamente:", data)
+
+    // Verificar el estado de la historia después de actualizarla
+    const { data: storyAfter, error: storyAfterError } = await supabase
+      .from("stories")
+      .select("id, title, published")
+      .eq("id", storyId)
+      .single()
+
+    if (storyAfterError) {
+      console.error("Error al obtener el estado actualizado de la historia:", storyAfterError)
+    } else {
+      console.log("Estado actualizado de la historia:", storyAfter)
     }
 
     // Revalidar rutas
@@ -409,9 +448,6 @@ export async function approveStory(storyId: string) {
 export async function rejectStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  // Lista de correos electrónicos autorizados como administradores
-  const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
-
   try {
     // Verificar autenticación
     const { data: userData } = await supabase.auth.getUser()
@@ -420,9 +456,14 @@ export async function rejectStory(storyId: string) {
       throw new Error("No autenticado")
     }
 
-    // Verificar si el usuario es administrador
-    const isAdmin = ADMIN_EMAILS.includes(userData.user.email?.toLowerCase() || "")
-    if (!isAdmin) {
+    // Verificar si el usuario es administrador consultando la tabla profiles
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", userData.user.id)
+      .single()
+
+    if (profileError || !profileData || !profileData.is_admin) {
       throw new Error("No autorizado")
     }
 

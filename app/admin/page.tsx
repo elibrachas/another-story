@@ -4,9 +4,6 @@ import { cookies } from "next/headers"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AdminStoryList } from "@/components/admin-story-list"
 
-// Lista de correos electrónicos autorizados como administradores
-const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
-
 export default async function AdminPage() {
   const supabase = createServerComponentClient({ cookies })
 
@@ -16,9 +13,14 @@ export default async function AdminPage() {
     redirect("/auth")
   }
 
-  // Verificar si el usuario es administrador
-  const isAdmin = ADMIN_EMAILS.includes(userData.user.email?.toLowerCase() || "")
-  if (!isAdmin) {
+  // Verificar si el usuario es administrador consultando la tabla profiles
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userData.user.id)
+    .single()
+
+  if (profileError || !profileData || !profileData.is_admin) {
     redirect("/")
   }
 

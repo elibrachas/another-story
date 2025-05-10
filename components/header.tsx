@@ -12,9 +12,6 @@ import { useSupabase } from "@/lib/supabase-provider"
 import { SearchBar } from "@/components/search-bar"
 import { useTheme } from "next-themes"
 
-// Lista de correos electrónicos autorizados como administradores
-const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
-
 export default function Header() {
   const { session, supabase } = useSupabase()
   const [showLoginDialog, setShowLoginDialog] = useState(false)
@@ -23,12 +20,29 @@ export default function Header() {
 
   // Verificar si el usuario actual es administrador
   useEffect(() => {
-    if (session?.user?.email) {
-      setIsAdmin(ADMIN_EMAILS.includes(session.user.email.toLowerCase()))
-    } else {
-      setIsAdmin(false)
+    async function checkAdminStatus() {
+      if (session?.user?.id) {
+        try {
+          const { data, error } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single()
+
+          if (error) {
+            console.error("Error al verificar estado de administrador:", error)
+            setIsAdmin(false)
+            return
+          }
+
+          setIsAdmin(data?.is_admin || false)
+        } catch (error) {
+          console.error("Error al verificar estado de administrador:", error)
+          setIsAdmin(false)
+        }
+      } else {
+        setIsAdmin(false)
+      }
     }
-  }, [session])
+
+    checkAdminStatus()
+  }, [session, supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
