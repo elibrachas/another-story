@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,10 +54,22 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   // Ordenar las etiquetas por nombre
   const sortedTags = [...allTags].sort((a, b) => a.name.localeCompare(b.name))
 
+  // Eliminar duplicados de las etiquetas seleccionadas
+  useEffect(() => {
+    const uniqueTags = [...new Set(selectedTags)]
+    if (uniqueTags.length !== selectedTags.length) {
+      console.log("Eliminando etiquetas duplicadas:", selectedTags.length, "->", uniqueTags.length)
+      setSelectedTags(uniqueTags)
+    }
+  }, [selectedTags])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!title || !(activeTab === "improved" ? improvedContent : content) || !industry) {
+    // Determinar qué contenido usar basado en la pestaña activa
+    const finalContent = activeTab === "improved" ? improvedContent : content
+
+    if (!title || !finalContent || !industry) {
       toast({
         title: "Campos faltantes",
         description: "Por favor completa todos los campos requeridos",
@@ -69,8 +81,9 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     try {
       setIsSubmitting(true)
 
-      // Determinar qué contenido usar basado en la pestaña activa
-      const finalContent = activeTab === "improved" ? improvedContent : content
+      // Eliminar duplicados de las etiquetas
+      const uniqueTags = [...new Set(selectedTags)]
+      const uniqueCustomTags = [...new Set(customTags)]
 
       console.log("Enviando datos para guardar:", {
         id: story.id,
@@ -78,8 +91,8 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         contentLength: finalContent.length,
         activeTab,
         industry,
-        tagsCount: selectedTags.length,
-        customTagsCount: customTags.length,
+        tagsCount: uniqueTags.length,
+        customTagsCount: uniqueCustomTags.length,
         publish: publishAfterSave,
       })
 
@@ -88,8 +101,8 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         title,
         content: finalContent,
         industry,
-        tags: selectedTags,
-        customTags,
+        tags: uniqueTags,
+        customTags: uniqueCustomTags,
         publish: publishAfterSave,
       })
 
