@@ -1,25 +1,80 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { getStoryById, getCommentsByStoryId } from "@/lib/supabase-server"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 import { ArrowLeft, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { UpvoteButton } from "@/components/upvote-button"
 import { CommentList } from "@/components/comment-list"
 import { CommentForm } from "@/components/comment-form"
 import { Separator } from "@/components/ui/separator"
 import { TagBadge } from "@/components/tag-badge"
+import { getStoryByIdClient, getCommentsByStoryIdClient } from "@/lib/supabase-client"
+import type { Story, Comment } from "@/lib/types"
 
-export default async function StoryPage({ params }: { params: { id: string } }) {
-  const story = await getStoryById(params.id)
+export default function StoryPage({ params }: { params: { id: string } }) {
+  const [story, setStory] = useState<Story | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
-  if (!story) {
-    notFound()
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const storyData = await getStoryByIdClient(params.id)
+
+        if (!storyData) {
+          router.push("/404")
+          return
+        }
+
+        const commentsData = await getCommentsByStoryIdClient(params.id)
+
+        setStory(storyData)
+        setComments(commentsData)
+      } catch (err) {
+        console.error("Error al cargar datos:", err)
+        setError("Error al cargar el contenido. Por favor, inténtalo de nuevo más tarde.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [params.id, router])
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="mt-4 text-muted-foreground">Cargando historia...</p>
+      </div>
+    )
   }
 
-  const comments = await getCommentsByStoryId(params.id)
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold mb-4">Error al cargar contenido</h2>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
+          Reintentar
+        </Button>
+      </div>
+    )
+  }
+
+  if (!story) {
+    return null
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
