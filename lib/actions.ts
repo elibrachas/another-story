@@ -358,3 +358,93 @@ export async function updateProfile({
     return { success: false, error: "Failed to update profile" }
   }
 }
+
+// Añadir estas funciones al final del archivo
+
+export async function approveStory(storyId: string) {
+  const supabase = createServerActionClient({ cookies })
+
+  // Lista de correos electrónicos autorizados como administradores
+  const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
+
+  try {
+    // Verificar autenticación
+    const { data: userData } = await supabase.auth.getUser()
+
+    if (!userData.user) {
+      throw new Error("No autenticado")
+    }
+
+    // Verificar si el usuario es administrador
+    const isAdmin = ADMIN_EMAILS.includes(userData.user.email?.toLowerCase() || "")
+    if (!isAdmin) {
+      throw new Error("No autorizado")
+    }
+
+    console.log(`Aprobando historia con ID: ${storyId}`)
+
+    // Actualizar la historia a publicada
+    const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select()
+
+    if (error) {
+      console.error("Error al aprobar historia:", error)
+      throw new Error(error.message)
+    }
+
+    // Revalidar rutas
+    revalidatePath("/")
+    revalidatePath("/admin")
+    revalidatePath(`/story/${storyId}`)
+
+    return { success: true, data }
+  } catch (error) {
+    console.error("Error en la acción de aprobar historia:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al aprobar historia",
+    }
+  }
+}
+
+export async function rejectStory(storyId: string) {
+  const supabase = createServerActionClient({ cookies })
+
+  // Lista de correos electrónicos autorizados como administradores
+  const ADMIN_EMAILS = ["bracciaforte@gmail.com", "metu26@gmail.com"]
+
+  try {
+    // Verificar autenticación
+    const { data: userData } = await supabase.auth.getUser()
+
+    if (!userData.user) {
+      throw new Error("No autenticado")
+    }
+
+    // Verificar si el usuario es administrador
+    const isAdmin = ADMIN_EMAILS.includes(userData.user.email?.toLowerCase() || "")
+    if (!isAdmin) {
+      throw new Error("No autorizado")
+    }
+
+    console.log(`Rechazando historia con ID: ${storyId}`)
+
+    // Eliminar la historia
+    const { error } = await supabase.from("stories").delete().eq("id", storyId)
+
+    if (error) {
+      console.error("Error al rechazar historia:", error)
+      throw new Error(error.message)
+    }
+
+    // Revalidar rutas
+    revalidatePath("/admin")
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error en la acción de rechazar historia:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al rechazar historia",
+    }
+  }
+}

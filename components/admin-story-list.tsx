@@ -6,6 +6,7 @@ import { Check, X, Eye } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import type { Story } from "@/lib/types"
+import { approveStory, rejectStory } from "@/lib/actions"
 
 export function AdminStoryList({ stories }: { stories: Story[] }) {
   const [pendingStories, setPendingStories] = useState(stories)
@@ -16,15 +17,10 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
     try {
       setIsProcessing(storyId)
 
-      const response = await fetch("/api/admin/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyId }),
-      })
+      const result = await approveStory(storyId)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Error al aprobar la historia")
+      if (!result.success) {
+        throw new Error(result.error || "Error al aprobar la historia")
       }
 
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
@@ -53,15 +49,10 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
     try {
       setIsProcessing(storyId)
 
-      const response = await fetch("/api/admin/reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyId }),
-      })
+      const result = await rejectStory(storyId)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Error al rechazar la historia")
+      if (!result.success) {
+        throw new Error(result.error || "Error al rechazar la historia")
       }
 
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
