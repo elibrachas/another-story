@@ -63,12 +63,6 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex gap-6">
-          <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
-            Inicio
-          </Link>
-          <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
-            Historias
-          </Link>
           <Link href="/acerca-de" className="text-sm font-medium transition-colors hover:text-primary">
             Acerca de
           </Link>

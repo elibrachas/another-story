@@ -117,7 +117,10 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
       if (!selectedTags.includes(existingTag.id)) {
         toggleTag(existingTag.id)
       }
-    } else if (!customTags.includes(tagName)) {
+    } else if (
+      !customTags.includes(tagName) &&
+      !customTags.some((tag) => tag.toLowerCase() === tagName.toLowerCase())
+    ) {
       // Verificar si ya tenemos demasiadas etiquetas
       if (selectedTags.length + customTags.length >= 5) {
         toast({
