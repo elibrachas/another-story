@@ -702,8 +702,13 @@ export async function improveStoryWithAI(content: string): Promise<{
       return { success: false, error: "No tienes permisos de administrador" }
     }
 
+    // Construir la URL absoluta
+    const protocol = process.env.NODE_ENV === "development" ? "http" : "https"
+    const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "localhost:3000"
+    const baseUrl = `${protocol}://${host}`
+
     // Usar nuestra API Route para mejorar el contenido
-    const response = await fetch("/api/admin/improve-content", {
+    const response = await fetch(`${baseUrl}/api/admin/improve-content`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
