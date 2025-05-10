@@ -151,63 +151,86 @@ export async function upvoteStory(storyId: string) {
 export async function approveStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData.user) {
-    console.error("Error de autenticación:", userError)
-    throw new Error("No autenticado")
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      console.error("Error de autenticación:", userError)
+      throw new Error("No autenticado")
+    }
+
+    // Verificar si el usuario es administrador
+    if (!isAuthorizedAdmin(userData.user.email)) {
+      console.error("Usuario no autorizado:", userData.user.email)
+      throw new Error("No autorizado")
+    }
+
+    console.log(`Intentando aprobar historia con ID: ${storyId}`)
+
+    // Actualizar el estado de la historia a publicada
+    const { data, error } = await supabase
+      .from("stories")
+      .update({ published: true })
+      .eq("id", storyId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error al aprobar historia:", error)
+      throw new Error(`Error al aprobar historia: ${error.message}`)
+    }
+
+    if (!data) {
+      console.error("No se encontró la historia o no se actualizó")
+      throw new Error("No se encontró la historia o no se actualizó")
+    }
+
+    console.log(`Historia aprobada exitosamente: ${data.id}`)
+
+    // Forzar la revalidación de las rutas
+    revalidatePath("/")
+    revalidatePath("/admin")
+    revalidatePath(`/story/${storyId}`)
+
+    return { success: true, data }
+  } catch (error) {
+    console.error("Error en approveStory:", error)
+    throw error
   }
-
-  // Verificar si el usuario es administrador
-  if (!isAuthorizedAdmin(userData.user.email)) {
-    console.error("Usuario no autorizado:", userData.user.email)
-    throw new Error("No autorizado")
-  }
-
-  console.log(`Intentando aprobar historia con ID: ${storyId}`)
-
-  // Actualizar el estado de la historia a publicada
-  const { data, error } = await supabase.from("stories").update({ published: true }).eq("id", storyId).select().single()
-
-  if (error) {
-    console.error("Error al aprobar historia:", error)
-    throw new Error(`Error al aprobar historia: ${error.message}`)
-  }
-
-  if (!data) {
-    console.error("No se encontró la historia o no se actualizó")
-    throw new Error("No se encontró la historia o no se actualizó")
-  }
-
-  console.log(`Historia aprobada exitosamente: ${data.id}`)
-
-  // Forzar la revalidación de las rutas
-  revalidatePath("/")
-  revalidatePath("/admin")
-  revalidatePath(`/story/${storyId}`)
-
-  return { success: true, data }
 }
 
 export async function rejectStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData.user) {
-    throw new Error("No autenticado")
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      console.error("Error de autenticación:", userError)
+      throw new Error("No autenticado")
+    }
+
+    // Verificar si el usuario es administrador
+    if (!isAuthorizedAdmin(userData.user.email)) {
+      console.error("Usuario no autorizado:", userData.user.email)
+      throw new Error("No autorizado")
+    }
+
+    console.log(`Intentando rechazar historia con ID: ${storyId}`)
+
+    const { error } = await supabase.from("stories").delete().eq("id", storyId)
+
+    if (error) {
+      console.error("Error al rechazar historia:", error)
+      throw new Error(`Error al rechazar historia: ${error.message}`)
+    }
+
+    console.log(`Historia rechazada exitosamente: ${storyId}`)
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error en rejectStory:", error)
+    throw error
   }
-
-  // Verificar si el usuario es administrador
-  if (!isAuthorizedAdmin(userData.user.email)) {
-    throw new Error("No autorizado")
-  }
-
-  const { error } = await supabase.from("stories").delete().eq("id", storyId)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  revalidatePath("/admin")
 }
 
 export async function submitComment(data: CommentSubmission) {
@@ -371,43 +394,107 @@ export async function createInitialProfile() {
 export async function approveComment(commentId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData.user) {
-    throw new Error("No autenticado")
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      console.error("Error de autenticación:", userError)
+      throw new Error("No autenticado")
+    }
+
+    // Verificar si el usuario es administrador
+    if (!isAuthorizedAdmin(userData.user.email)) {
+      console.error("Usuario no autorizado:", userData.user.email)
+      throw new Error("No autorizado")
+    }
+
+    console.log(`Intentando aprobar comentario con ID: ${commentId}`)
+
+    // Obtener información del comentario para revalidar la ruta correcta
+    const { data: comment, error: commentError } = await supabase
+      .from("comments")
+      .select("story_id")
+      .eq("id", commentId)
+      .single()
+
+    if (commentError) {
+      console.error("Error al obtener información del comentario:", commentError)
+      throw new Error(`Error al obtener información del comentario: ${commentError.message}`)
+    }
+
+    // Actualizar el comentario a aprobado
+    const { data, error } = await supabase.from("comments").update({ approved: true }).eq("id", commentId).select()
+
+    if (error) {
+      console.error("Error al aprobar comentario:", error)
+      throw new Error(`Error al aprobar comentario: ${error.message}`)
+    }
+
+    console.log(`Comentario aprobado exitosamente: ${commentId}`)
+
+    // Revalidar rutas
+    revalidatePath("/admin")
+    if (comment?.story_id) {
+      revalidatePath(`/story/${comment.story_id}`)
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error("Error en approveComment:", error)
+    throw error
   }
-
-  // Verificar si el usuario es administrador
-  if (!isAuthorizedAdmin(userData.user.email)) {
-    throw new Error("No autorizado")
-  }
-
-  // En un sistema real, actualizaríamos el campo 'approved' a true
-  // Por ahora, simplemente simulamos la aprobación
-
-  revalidatePath("/admin")
-  return { success: true }
 }
 
 export async function rejectComment(commentId: string) {
   const supabase = createServerActionClient({ cookies })
 
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData.user) {
-    throw new Error("No autenticado")
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      console.error("Error de autenticación:", userError)
+      throw new Error("No autenticado")
+    }
+
+    // Verificar si el usuario es administrador
+    if (!isAuthorizedAdmin(userData.user.email)) {
+      console.error("Usuario no autorizado:", userData.user.email)
+      throw new Error("No autorizado")
+    }
+
+    console.log(`Intentando rechazar comentario con ID: ${commentId}`)
+
+    // Obtener información del comentario para revalidar la ruta correcta
+    const { data: comment, error: commentError } = await supabase
+      .from("comments")
+      .select("story_id")
+      .eq("id", commentId)
+      .single()
+
+    if (commentError) {
+      console.error("Error al obtener información del comentario:", commentError)
+      throw new Error(`Error al obtener información del comentario: ${commentError.message}`)
+    }
+
+    // Eliminar el comentario
+    const { error } = await supabase.from("comments").delete().eq("id", commentId)
+
+    if (error) {
+      console.error("Error al rechazar comentario:", error)
+      throw new Error(`Error al rechazar comentario: ${error.message}`)
+    }
+
+    console.log(`Comentario rechazado exitosamente: ${commentId}`)
+
+    // Revalidar rutas
+    revalidatePath("/admin")
+    if (comment?.story_id) {
+      revalidatePath(`/story/${comment.story_id}`)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error en rejectComment:", error)
+    throw error
   }
-
-  // Verificar si el usuario es administrador
-  if (!isAuthorizedAdmin(userData.user.email)) {
-    throw new Error("No autorizado")
-  }
-
-  const { error } = await supabase.from("comments").delete().eq("id", commentId)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  revalidatePath("/admin")
 }
 
 // Funciones de administración para usuarios

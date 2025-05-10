@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Check, X, Eye, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
+import { approveComment, rejectComment } from "@/lib/actions"
 import type { AdminComment } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -27,18 +28,9 @@ export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
     try {
       setIsApproving(commentId)
 
-      const response = await fetch("/api/admin/approve-comment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ commentId }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Error al aprobar el comentario")
-      }
+      console.log(`Intentando aprobar comentario: ${commentId}`)
+      const result = await approveComment(commentId)
+      console.log("Resultado de aprobación:", result)
 
       setPendingComments((prev) => prev.filter((comment) => comment.id !== commentId))
 
@@ -46,6 +38,9 @@ export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
         title: "Comentario aprobado",
         description: "El comentario ha sido publicado",
       })
+
+      // Recargar la página para asegurar que los cambios se reflejen
+      window.location.reload()
     } catch (error) {
       console.error("Error al aprobar comentario:", error)
       toast({
@@ -62,18 +57,8 @@ export function AdminCommentList({ comments }: { comments: AdminComment[] }) {
     try {
       setIsRejecting(true)
 
-      const response = await fetch("/api/admin/reject-comment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ commentId }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Error al rechazar el comentario")
-      }
+      console.log(`Intentando rechazar comentario: ${commentId}`)
+      await rejectComment(commentId)
 
       setPendingComments((prev) => prev.filter((comment) => comment.id !== commentId))
       setCommentToReject(null)

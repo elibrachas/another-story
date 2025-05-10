@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Check, X, Eye, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
+import { approveStory, rejectStory } from "@/lib/actions"
 import type { Story } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -25,30 +26,25 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
 
   const handleApprove = async (storyId: string) => {
     try {
-      // Mostrar estado de carga
       setIsApproving(storyId)
 
-      // Llamar a la acción del servidor para aprobar la historia
-      const response = await fetch("/api/admin/approve-story", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ storyId }),
-      })
+      console.log(`Intentando aprobar historia: ${storyId}`)
+      const result = await approveStory(storyId)
+      console.log("Resultado de aprobación:", result)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Error al aprobar la historia")
+      if (!result || !result.success) {
+        throw new Error("No se pudo aprobar la historia")
       }
 
-      // Actualizar el estado local para reflejar el cambio inmediatamente
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
 
       toast({
         title: "Historia aprobada",
         description: "La historia ha sido publicada en el sitio",
       })
+
+      // Recargar la página para asegurar que los cambios se reflejen
+      window.location.reload()
     } catch (error) {
       console.error("Error al aprobar historia:", error)
       toast({
@@ -65,18 +61,8 @@ export function AdminStoryList({ stories }: { stories: Story[] }) {
     try {
       setIsRejecting(true)
 
-      const response = await fetch("/api/admin/reject-story", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ storyId }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Error al rechazar la historia")
-      }
+      console.log(`Intentando rechazar historia: ${storyId}`)
+      await rejectStory(storyId)
 
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
       setStoryToReject(null)
