@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Wand2, Save, X, ArrowLeft, Check } from "lucide-react"
+import { Loader2, Wand2, Save, ArrowLeft, Check } from "lucide-react"
 import { updateStory, improveStoryWithAI } from "@/lib/actions"
 import type { Story, Tag } from "@/lib/types"
 
@@ -40,28 +40,15 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
   const [content, setContent] = useState(story.content)
   const [improvedContent, setImprovedContent] = useState("")
   const [industry, setIndustry] = useState(story.industry)
-  const [selectedTags, setSelectedTags] = useState<string[]>(story.tags?.map((tag) => tag.id) || [])
-  const [newTagInput, setNewTagInput] = useState("")
-  const [customTags, setCustomTags] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isImproving, setIsImproving] = useState(false)
   const [publishAfterSave, setPublishAfterSave] = useState(false)
   const [activeTab, setActiveTab] = useState("original")
   const router = useRouter()
   const { toast } = useToast()
-  const newTagInputRef = useRef<HTMLInputElement>(null)
 
   // Ordenar las etiquetas por nombre
   const sortedTags = [...allTags].sort((a, b) => a.name.localeCompare(b.name))
-
-  // Eliminar duplicados de las etiquetas seleccionadas
-  useEffect(() => {
-    const uniqueTags = [...new Set(selectedTags)]
-    if (uniqueTags.length !== selectedTags.length) {
-      console.log("Eliminando etiquetas duplicadas:", selectedTags.length, "->", uniqueTags.length)
-      setSelectedTags(uniqueTags)
-    }
-  }, [selectedTags])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,9 +68,8 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     try {
       setIsSubmitting(true)
 
-      // Eliminar duplicados de las etiquetas
-      const uniqueTags = [...new Set(selectedTags)]
-      const uniqueCustomTags = [...new Set(customTags)]
+      // Usar las etiquetas originales de la historia
+      const originalTagIds = story.tags?.map((tag) => tag.id) || []
 
       console.log("Enviando datos para guardar:", {
         id: story.id,
@@ -91,8 +77,6 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         contentLength: finalContent.length,
         activeTab,
         industry,
-        tagsCount: uniqueTags.length,
-        customTagsCount: uniqueCustomTags.length,
         publish: publishAfterSave,
       })
 
@@ -101,8 +85,8 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
         title,
         content: finalContent,
         industry,
-        tags: uniqueTags,
-        customTags: uniqueCustomTags,
+        tags: originalTagIds,
+        customTags: [],
         publish: publishAfterSave,
       })
 
@@ -162,38 +146,6 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
     }
   }
 
-  const toggleTag = (tagId: string) => {
-    setSelectedTags((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]))
-  }
-
-  const addNewTag = () => {
-    const tagName = newTagInput.trim()
-    if (!tagName) return
-
-    // Verificar si la etiqueta ya existe en las predefinidas
-    const existingTag = allTags.find((tag) => tag.name.toLowerCase() === tagName.toLowerCase())
-    if (existingTag) {
-      if (!selectedTags.includes(existingTag.id)) {
-        toggleTag(existingTag.id)
-      }
-    } else if (
-      !customTags.includes(tagName) &&
-      !customTags.some((tag) => tag.toLowerCase() === tagName.toLowerCase())
-    ) {
-      // Añadir como etiqueta personalizada
-      setCustomTags((prev) => [...prev, tagName])
-    }
-
-    setNewTagInput("")
-    newTagInputRef.current?.focus()
-  }
-
-  const removeCustomTag = (tagToRemove: string) => {
-    setCustomTags((prev) => prev.filter((tag) => tag !== tagToRemove))
-  }
-
-  const getTotalTagsCount = () => selectedTags.length + customTags.length
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="flex justify-between items-center">
@@ -249,60 +201,21 @@ export function EditStoryForm({ story, allTags }: EditStoryFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label>Etiquetas</Label>
+        <Label>Etiquetas (solo lectura)</Label>
         <div className="flex flex-wrap gap-2 mt-2">
-          {sortedTags.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-              className={`cursor-pointer ${
-                selectedTags.includes(tag.id)
-                  ? "bg-purple-600 hover:bg-purple-700"
-                  : "hover:bg-purple-100 dark:hover:bg-purple-900"
-              }`}
-              onClick={() => toggleTag(tag.id)}
-            >
-              {tag.name}
-            </Badge>
-          ))}
-        </div>
-
-        <div className="flex items-center space-x-2 mt-4">
-          <Input
-            ref={newTagInputRef}
-            value={newTagInput}
-            onChange={(e) => setNewTagInput(e.target.value)}
-            placeholder="Añadir nueva etiqueta"
-          />
-          <Button
-            type="button"
-            onClick={addNewTag}
-            disabled={!newTagInput.trim()}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            Añadir
-          </Button>
-        </div>
-
-        {customTags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {customTags.map((tag) => (
-              <Badge key={tag} variant="default" className="bg-purple-600 hover:bg-purple-700 pr-1.5">
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeCustomTag(tag)}
-                  className="ml-1 rounded-full hover:bg-purple-800 p-0.5"
-                >
-                  <X className="h-3 w-3" />
-                  <span className="sr-only">Eliminar etiqueta</span>
-                </button>
+          {story.tags && story.tags.length > 0 ? (
+            story.tags.map((tag) => (
+              <Badge key={tag.id} variant="default" className="bg-purple-600">
+                {tag.name}
               </Badge>
-            ))}
-          </div>
-        )}
-
-        <p className="text-xs text-muted-foreground mt-1">{getTotalTagsCount()} etiquetas seleccionadas</p>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay etiquetas asignadas a esta historia</p>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Las etiquetas originales del usuario no pueden ser modificadas
+        </p>
       </div>
 
       <div className="space-y-2">
