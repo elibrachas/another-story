@@ -314,6 +314,22 @@ export async function upvoteStory(storyId: string) {
       return { success: true, alreadyVoted: true }
     }
 
+    // Primero, obtener el valor actual de upvotes
+    const { data: currentStory, error: fetchError } = await supabase
+      .from("stories")
+      .select("upvotes")
+      .eq("id", storyId)
+      .single()
+
+    if (fetchError) {
+      console.error("Error fetching current upvotes:", fetchError)
+      return { success: false, error: "Error al obtener el contador actual de votos" }
+    }
+
+    // Calcular el nuevo valor de upvotes
+    const currentUpvotes = currentStory?.upvotes || 0
+    const newUpvotes = currentUpvotes + 1
+
     // Registrar el voto del usuario en la tabla de votos
     const { error: insertError } = await supabase.from("upvotes").insert({
       story_id: storyId,
@@ -325,11 +341,8 @@ export async function upvoteStory(storyId: string) {
       return { success: false, error: "Error al registrar el voto" }
     }
 
-    // Incrementar el contador de votos en la tabla de historias
-    const { error: updateError } = await supabase
-      .from("stories")
-      .update({ upvotes: () => "upvotes + 1" })
-      .eq("id", storyId)
+    // Incrementar el contador de votos en la tabla de historias con el valor explícito
+    const { error: updateError } = await supabase.from("stories").update({ upvotes: newUpvotes }).eq("id", storyId)
 
     if (updateError) {
       console.error("Error upvoting story:", updateError)
@@ -338,24 +351,13 @@ export async function upvoteStory(storyId: string) {
       return { success: false, error: "Error al actualizar el contador de votos" }
     }
 
-    // Obtener el nuevo contador de votos
-    const { data: updatedStory, error: fetchError } = await supabase
-      .from("stories")
-      .select("upvotes")
-      .eq("id", storyId)
-      .single()
-
-    if (fetchError) {
-      console.error("Error fetching updated upvotes:", fetchError)
-    }
-
     // Revalidar las rutas para que se actualicen los datos
     revalidatePath("/")
     revalidatePath(`/story/${storyId}`)
 
     return {
       success: true,
-      newUpvoteCount: updatedStory?.upvotes || null,
+      newUpvoteCount: newUpvotes,
     }
   } catch (error) {
     console.error("Error in upvoteStory action:", error)
@@ -395,6 +397,22 @@ export async function upvoteComment(commentId: string, storyId: string) {
       return { success: true, alreadyVoted: true }
     }
 
+    // Primero, obtener el valor actual de upvotes
+    const { data: currentComment, error: fetchError } = await supabase
+      .from("comments")
+      .select("upvotes")
+      .eq("id", commentId)
+      .single()
+
+    if (fetchError) {
+      console.error("Error fetching current comment upvotes:", fetchError)
+      return { success: false, error: "Error al obtener el contador actual de votos" }
+    }
+
+    // Calcular el nuevo valor de upvotes
+    const currentUpvotes = currentComment?.upvotes || 0
+    const newUpvotes = currentUpvotes + 1
+
     // Registrar el voto del usuario en la tabla de votos
     const { error: insertError } = await supabase.from("comment_upvotes").insert({
       comment_id: commentId,
@@ -406,11 +424,8 @@ export async function upvoteComment(commentId: string, storyId: string) {
       return { success: false, error: "Error al registrar el voto" }
     }
 
-    // Incrementar el contador de votos en la tabla de comentarios
-    const { error: updateError } = await supabase
-      .from("comments")
-      .update({ upvotes: () => "upvotes + 1" })
-      .eq("id", commentId)
+    // Incrementar el contador de votos en la tabla de comentarios con el valor explícito
+    const { error: updateError } = await supabase.from("comments").update({ upvotes: newUpvotes }).eq("id", commentId)
 
     if (updateError) {
       console.error("Error upvoting comment:", updateError)
@@ -419,22 +434,11 @@ export async function upvoteComment(commentId: string, storyId: string) {
       return { success: false, error: "Error al actualizar el contador de votos" }
     }
 
-    // Obtener el nuevo contador de votos
-    const { data: updatedComment, error: fetchError } = await supabase
-      .from("comments")
-      .select("upvotes")
-      .eq("id", commentId)
-      .single()
-
-    if (fetchError) {
-      console.error("Error fetching updated comment upvotes:", fetchError)
-    }
-
     revalidatePath(`/story/${storyId}`)
 
     return {
       success: true,
-      newUpvoteCount: updatedComment?.upvotes || null,
+      newUpvoteCount: newUpvotes,
     }
   } catch (error) {
     console.error("Error in upvoteComment action:", error)
