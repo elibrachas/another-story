@@ -9,11 +9,14 @@ import { Footer } from "@/components/footer"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
 import Script from "next/script"
-import { defaultMetadata } from "./metadata-config"
+// Importar viewport desde metadata-config
+import { defaultMetadata, viewport } from "./metadata-config"
 
 const inter = Inter({ subsets: ["latin"] })
 
+// Añadir la exportación de viewport después de la exportación de metadata
 export const metadata: Metadata = defaultMetadata
+export { viewport }
 
 export default function RootLayout({
   children,

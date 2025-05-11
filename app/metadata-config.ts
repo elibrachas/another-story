@@ -47,10 +47,6 @@ export const defaultMetadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/favicon.ico",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-  },
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
@@ -109,4 +105,9 @@ export function generateTagMetadata(tag: { name: string; id: string }): Metadata
       canonical: `/tag/${tag.id}`,
     },
   }
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 }

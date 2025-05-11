@@ -2,6 +2,16 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Instagram, Linkedin, Youtube } from "lucide-react"
 
+export const metadata = {
+  title: "Sobre Nosotros | Crónicas Laborales",
+  description: "Conoce más sobre Crónicas Laborales y su misión",
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
+
 export default function AboutPage() {
   return (
     <div className="max-w-3xl mx-auto">

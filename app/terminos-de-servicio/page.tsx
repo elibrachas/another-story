@@ -1,3 +1,13 @@
+export const metadata = {
+  title: "Términos de Servicio | Crónicas Laborales",
+  description: "Términos y condiciones de uso de Crónicas Laborales",
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
+
 export default function TermsOfServicePage() {
   return (
     <div className="max-w-3xl mx-auto py-8">

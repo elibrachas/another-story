@@ -1,3 +1,13 @@
+export const metadata = {
+  title: "Política de Privacidad | Crónicas Laborales",
+  description: "Política de privacidad de Crónicas Laborales",
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
+
 export default function PrivacyPolicyPage() {
   return (
     <div className="max-w-3xl mx-auto py-8">
