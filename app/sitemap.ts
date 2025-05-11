@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
+
+// Crear un cliente de Supabase usando variables de entorno
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "")
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Determinar la URL base según el entorno
@@ -47,9 +49,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     // Obtener historias publicadas para el sitemap
-    const supabase = createServerComponentClient({ cookies })
-
-    // Obtener historias publicadas
     const { data: stories, error: storiesError } = await supabase
       .from("stories")
       .select("id, created_at, updated_at")
