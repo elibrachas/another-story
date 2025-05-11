@@ -10,6 +10,11 @@ export const viewport = {
   initialScale: 1,
 }
 
+export const themeColor = [
+  { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  { media: "(prefers-color-scheme: dark)", color: "#000000" },
+]
+
 export default function CookiePolicyPage() {
   return (
     <div className="max-w-3xl mx-auto py-8">

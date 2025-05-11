@@ -47,10 +47,6 @@ export const defaultMetadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/favicon.ico",
   },
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
 }
 
 // Función para generar metadatos para una historia específica
@@ -111,3 +107,8 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
 }
+
+export const themeColor = [
+  { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  { media: "(prefers-color-scheme: dark)", color: "#000000" },
+]
