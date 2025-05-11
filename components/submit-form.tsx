@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, type KeyboardEvent } from "react"
+import { useState, useRef, type KeyboardEvent, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,7 @@ import { submitStory } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 // Añadir el icono de información a las importaciones
-import { AlertTriangle, X, Info } from "lucide-react"
+import { AlertTriangle, X, Info, CheckCircle2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import type { Tag } from "@/lib/types"
@@ -43,6 +43,12 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   const [newTagInput, setNewTagInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const [formErrors, setFormErrors] = useState<{
+    title?: string
+    content?: string
+    industry?: string
+  }>({})
+  const [submitSuccess, setSubmitSuccess] = useState(false)
   const { session } = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
@@ -50,6 +56,43 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
   // Ordenar las etiquetas por popularidad (simulado - en un sistema real, esto vendría de la base de datos)
   const sortedTags = [...tags].sort((a, b) => (b.count || 0) - (a.count || 0))
+
+  // Efecto para redirigir después de un envío exitoso
+  useEffect(() => {
+    if (submitSuccess) {
+      const timer = setTimeout(() => {
+        router.push("/")
+      }, 3000) // Redirigir después de 3 segundos
+      return () => clearTimeout(timer)
+    }
+  }, [submitSuccess, router])
+
+  const validateForm = () => {
+    const errors: {
+      title?: string
+      content?: string
+      industry?: string
+    } = {}
+    let isValid = true
+
+    if (!title.trim()) {
+      errors.title = "El título es obligatorio"
+      isValid = false
+    }
+
+    if (!content.trim()) {
+      errors.content = "El contenido de la historia es obligatorio"
+      isValid = false
+    }
+
+    if (!industry) {
+      errors.industry = "Debes seleccionar una industria"
+      isValid = false
+    }
+
+    setFormErrors(errors)
+    return isValid
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,7 +102,8 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
       return
     }
 
-    if (!title || !content || !industry) {
+    // Validar el formulario
+    if (!validateForm()) {
       toast({
         title: "Campos faltantes",
         description: "Por favor completa todos los campos requeridos",
@@ -87,22 +131,24 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
           description: result.error || "Error al enviar tu historia",
           variant: "destructive",
         })
+        setIsSubmitting(false)
         return
       }
 
+      // Mostrar mensaje de éxito
+      setSubmitSuccess(true)
       toast({
         title: "Historia enviada",
         description: "Tu historia ha sido enviada para revisión",
       })
 
-      router.push("/")
+      // No redirigimos inmediatamente, lo hacemos con el useEffect después de mostrar el mensaje de éxito
     } catch (error) {
       toast({
         title: "Error",
         description: "Error al enviar tu historia",
         variant: "destructive",
       })
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -156,6 +202,22 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
   const getTotalTagsCount = () => selectedTags.length + customTags.length
 
+  // Si el envío fue exitoso, mostrar mensaje de confirmación
+  if (submitSuccess) {
+    return (
+      <div className="bg-green-50 dark:bg-green-900/20 p-8 rounded-lg text-center">
+        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">¡Historia enviada con éxito!</h2>
+        <p className="mb-6">
+          Tu historia ha sido enviada para revisión. Serás redirigido a la página principal en unos segundos.
+        </p>
+        <Button onClick={() => router.push("/")} className="bg-green-600 hover:bg-green-700">
+          Volver a la página principal
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <>
       <Alert variant="warning" className="mb-6">
@@ -178,20 +240,40 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="title">Título</Label>
+          <Label htmlFor="title" className={formErrors.title ? "text-red-500" : ""}>
+            Título {formErrors.title && <span className="text-red-500">*</span>}
+          </Label>
           <Input
             id="title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              if (e.target.value.trim()) {
+                setFormErrors((prev) => ({ ...prev, title: undefined }))
+              }
+            }}
             placeholder="Dale a tu historia un título impactante"
+            className={formErrors.title ? "border-red-500 focus-visible:ring-red-500" : ""}
             required
           />
+          {formErrors.title && <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="industry">Industria</Label>
-          <Select value={industry} onValueChange={setIndustry} required>
-            <SelectTrigger>
+          <Label htmlFor="industry" className={formErrors.industry ? "text-red-500" : ""}>
+            Industria {formErrors.industry && <span className="text-red-500">*</span>}
+          </Label>
+          <Select
+            value={industry}
+            onValueChange={(value) => {
+              setIndustry(value)
+              if (value) {
+                setFormErrors((prev) => ({ ...prev, industry: undefined }))
+              }
+            }}
+            required
+          >
+            <SelectTrigger className={formErrors.industry ? "border-red-500 focus-visible:ring-red-500" : ""}>
               <SelectValue placeholder="Selecciona una industria" />
             </SelectTrigger>
             <SelectContent>
@@ -202,6 +284,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
               ))}
             </SelectContent>
           </Select>
+          {formErrors.industry && <p className="text-red-500 text-sm mt-1">{formErrors.industry}</p>}
         </div>
 
         <div className="space-y-2">
@@ -278,15 +361,23 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="content">Tu Historia</Label>
+          <Label htmlFor="content" className={formErrors.content ? "text-red-500" : ""}>
+            Tu Historia {formErrors.content && <span className="text-red-500">*</span>}
+          </Label>
           <Textarea
             id="content"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              setContent(e.target.value)
+              if (e.target.value.trim()) {
+                setFormErrors((prev) => ({ ...prev, content: undefined }))
+              }
+            }}
             placeholder="Comparte tu experiencia..."
-            className="min-h-[200px]"
+            className={`min-h-[200px] ${formErrors.content ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             required
           />
+          {formErrors.content && <p className="text-red-500 text-sm mt-1">{formErrors.content}</p>}
         </div>
 
         <div className="flex items-center space-x-2">
@@ -300,8 +391,29 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
           </Label>
         </div>
 
-        <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting}>
-          {isSubmitting ? "Enviando..." : "Enviar Historia"}
+        <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 relative" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <span className="opacity-0">Enviar Historia</span>
+              <span className="absolute inset-0 flex items-center justify-center">
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              </span>
+            </>
+          ) : (
+            "Enviar Historia"
+          )}
         </Button>
       </form>
 
