@@ -12,18 +12,23 @@ const customJestConfig = {
   moduleNameMapper: {
     // Maneja los alias de importación
     "^@/(.*)$": "<rootDir>/$1",
+    // Mocks para dependencias problemáticas
+    "^class-variance-authority$": "<rootDir>/__mocks__/cva-mock.js",
+    "^@radix-ui/(.*)$": "<rootDir>/__mocks__/radix-mock.js",
+    "^tailwindcss-animate$": "<rootDir>/__mocks__/tailwindcss-animate-mock.js",
+    "^next/navigation$": "<rootDir>/__mocks__/next-navigation-mock.js",
+    "^lucide-react$": "<rootDir>/__mocks__/lucide-react-mock.js",
   },
-  // Añade cobertura de código si lo deseas
-  collectCoverage: true,
-  collectCoverageFrom: [
-    "app/**/*.{js,jsx,ts,tsx}",
-    "components/**/*.{js,jsx,ts,tsx}",
-    "lib/**/*.{js,jsx,ts,tsx}",
-    "!**/*.d.ts",
-    "!**/node_modules/**",
-  ],
-  // Ignora ciertos directorios
+  // Solo ejecutar pruebas en el directorio __tests__
+  testMatch: ["**/__tests__/**/*.test.[jt]s?(x)"],
+  // Ignorar ciertos directorios
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
+  // Transformaciones
+  transform: {
+    "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", { presets: ["next/babel"] }],
+  },
+  // Entorno
+  moduleDirectories: ["node_modules", "<rootDir>/"],
 }
 
 // createJestConfig se exporta de esta manera para asegurar que next/jest pueda cargar la configuración de Next.js
