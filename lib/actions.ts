@@ -296,46 +296,70 @@ export async function upvoteStory(storyId: string) {
     const userId = session.user.id
 
     // Verificar si el usuario ya votó por esta historia
-    const { data: existingVote } = await supabase
-      .from("story_upvotes")
+    const { data: existingVote, error: checkError } = await supabase
+      .from("upvotes") // Usar "upvotes" en lugar de "story_upvotes"
       .select("*")
       .eq("story_id", storyId)
       .eq("user_id", userId)
       .single()
 
-    if (existingVote) {
-      // El usuario ya votó, no hacer nada
-      return { success: true }
+    if (checkError && checkError.code !== "PGRST116") {
+      // PGRST116 es el código para "no se encontró ningún registro"
+      console.error("Error checking existing vote:", checkError)
+      return { success: false, error: "Error al verificar voto existente" }
     }
 
-    // Incrementar el contador de votos en la tabla de historias
-    const { error: upvoteError } = await supabase
-      .from("stories")
-      .update({ upvotes: () => "upvotes + 1" })
-      .eq("id", storyId)
-
-    if (upvoteError) {
-      console.error("Error upvoting story:", upvoteError)
-      throw new Error("Failed to upvote story")
+    // Si el usuario ya votó, no hacer nada y devolver éxito
+    if (existingVote) {
+      return { success: true, alreadyVoted: true }
     }
 
     // Registrar el voto del usuario en la tabla de votos
-    const { error: voteRecordError } = await supabase.from("story_upvotes").insert({
+    const { error: insertError } = await supabase.from("upvotes").insert({
       story_id: storyId,
       user_id: userId,
     })
 
-    if (voteRecordError) {
-      console.error("Error recording vote:", voteRecordError)
-      throw new Error("Failed to record vote")
+    if (insertError) {
+      console.error("Error recording vote:", insertError)
+      return { success: false, error: "Error al registrar el voto" }
     }
 
+    // Incrementar el contador de votos en la tabla de historias
+    const { error: updateError } = await supabase
+      .from("stories")
+      .update({ upvotes: () => "upvotes + 1" })
+      .eq("id", storyId)
+
+    if (updateError) {
+      console.error("Error upvoting story:", updateError)
+      // Intentar revertir la inserción del voto
+      await supabase.from("upvotes").delete().eq("story_id", storyId).eq("user_id", userId)
+      return { success: false, error: "Error al actualizar el contador de votos" }
+    }
+
+    // Obtener el nuevo contador de votos
+    const { data: updatedStory, error: fetchError } = await supabase
+      .from("stories")
+      .select("upvotes")
+      .eq("id", storyId)
+      .single()
+
+    if (fetchError) {
+      console.error("Error fetching updated upvotes:", fetchError)
+    }
+
+    // Revalidar las rutas para que se actualicen los datos
     revalidatePath("/")
     revalidatePath(`/story/${storyId}`)
-    return { success: true }
+
+    return {
+      success: true,
+      newUpvoteCount: updatedStory?.upvotes || null,
+    }
   } catch (error) {
     console.error("Error in upvoteStory action:", error)
-    return { success: false, error: "Failed to upvote story" }
+    return { success: false, error: "Error al procesar el voto" }
   }
 }
 
@@ -354,45 +378,67 @@ export async function upvoteComment(commentId: string, storyId: string) {
     const userId = session.user.id
 
     // Verificar si el usuario ya votó por este comentario
-    const { data: existingVote } = await supabase
+    const { data: existingVote, error: checkError } = await supabase
       .from("comment_upvotes")
       .select("*")
       .eq("comment_id", commentId)
       .eq("user_id", userId)
       .single()
 
-    if (existingVote) {
-      // El usuario ya votó, no hacer nada
-      return { success: true }
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("Error checking existing comment vote:", checkError)
+      return { success: false, error: "Error al verificar voto existente" }
     }
 
-    // Incrementar el contador de votos en la tabla de comentarios
-    const { error: upvoteError } = await supabase
-      .from("comments")
-      .update({ upvotes: () => "upvotes + 1" })
-      .eq("id", commentId)
-
-    if (upvoteError) {
-      console.error("Error upvoting comment:", upvoteError)
-      throw new Error("Failed to upvote comment")
+    // Si el usuario ya votó, no hacer nada y devolver éxito
+    if (existingVote) {
+      return { success: true, alreadyVoted: true }
     }
 
     // Registrar el voto del usuario en la tabla de votos
-    const { error: voteRecordError } = await supabase.from("comment_upvotes").insert({
+    const { error: insertError } = await supabase.from("comment_upvotes").insert({
       comment_id: commentId,
       user_id: userId,
     })
 
-    if (voteRecordError) {
-      console.error("Error recording vote:", voteRecordError)
-      throw new Error("Failed to record vote")
+    if (insertError) {
+      console.error("Error recording comment vote:", insertError)
+      return { success: false, error: "Error al registrar el voto" }
+    }
+
+    // Incrementar el contador de votos en la tabla de comentarios
+    const { error: updateError } = await supabase
+      .from("comments")
+      .update({ upvotes: () => "upvotes + 1" })
+      .eq("id", commentId)
+
+    if (updateError) {
+      console.error("Error upvoting comment:", updateError)
+      // Intentar revertir la inserción del voto
+      await supabase.from("comment_upvotes").delete().eq("comment_id", commentId).eq("user_id", userId)
+      return { success: false, error: "Error al actualizar el contador de votos" }
+    }
+
+    // Obtener el nuevo contador de votos
+    const { data: updatedComment, error: fetchError } = await supabase
+      .from("comments")
+      .select("upvotes")
+      .eq("id", commentId)
+      .single()
+
+    if (fetchError) {
+      console.error("Error fetching updated comment upvotes:", fetchError)
     }
 
     revalidatePath(`/story/${storyId}`)
-    return { success: true }
+
+    return {
+      success: true,
+      newUpvoteCount: updatedComment?.upvotes || null,
+    }
   } catch (error) {
     console.error("Error in upvoteComment action:", error)
-    return { success: false, error: "Failed to upvote comment" }
+    return { success: false, error: "Error al procesar el voto" }
   }
 }
 
