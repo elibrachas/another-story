@@ -9,13 +9,11 @@ import { Footer } from "@/components/footer"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
 import Script from "next/script"
+import { defaultMetadata } from "./metadata-config"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata: Metadata = {
-  description: "Experiencias reales sobre ambientes laborales tóxicos",
-    generator: 'v0.dev'
-}
+export const metadata: Metadata = defaultMetadata
 
 export default function RootLayout({
   children,
