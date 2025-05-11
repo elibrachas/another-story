@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { StoryCard } from "@/components/story-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlusCircle, TagIcon } from "lucide-react"
 import Link from "next/link"
 import { TagBadge } from "@/components/tag-badge"
@@ -15,6 +16,8 @@ export default function Home() {
   const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [popularTimeFilter, setPopularTimeFilter] = useState<"week" | "month" | "all">("all")
+  const [activeTab, setActiveTab] = useState<"latest" | "top">("latest")
 
   useEffect(() => {
     async function loadData() {
@@ -40,6 +43,28 @@ export default function Home() {
 
     loadData()
   }, [])
+
+  // Filtrar historias populares según el período seleccionado
+  const getFilteredPopularStories = () => {
+    if (popularTimeFilter === "all") {
+      return [...stories].sort((a, b) => b.upvotes - a.upvotes)
+    }
+
+    const now = new Date()
+    let cutoffDate: Date
+
+    if (popularTimeFilter === "week") {
+      cutoffDate = new Date(now.setDate(now.getDate() - 7))
+    } else if (popularTimeFilter === "month") {
+      cutoffDate = new Date(now.setMonth(now.getMonth() - 1))
+    } else {
+      return [...stories].sort((a, b) => b.upvotes - a.upvotes)
+    }
+
+    return [...stories]
+      .filter((story) => new Date(story.created_at) >= cutoffDate)
+      .sort((a, b) => b.upvotes - a.upvotes)
+  }
 
   if (loading) {
     return (
@@ -93,16 +118,35 @@ export default function Home() {
         </section>
       )}
 
-      <Tabs defaultValue="top" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="top">Más Populares</TabsTrigger>
-          <TabsTrigger value="latest">Más Recientes</TabsTrigger>
-        </TabsList>
-        <TabsContent value="top" className="space-y-4">
+      <Tabs defaultValue="latest" className="w-full" onValueChange={(value) => setActiveTab(value as "latest" | "top")}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
+          <TabsList>
+            <TabsTrigger value="latest">Más Recientes</TabsTrigger>
+            <TabsTrigger value="top">Más Populares</TabsTrigger>
+          </TabsList>
+
+          {activeTab === "top" && (
+            <Select
+              value={popularTimeFilter}
+              onValueChange={(value) => setPopularTimeFilter(value as "week" | "month" | "all")}
+            >
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Filtrar por período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">Última semana</SelectItem>
+                <SelectItem value="month">Último mes</SelectItem>
+                <SelectItem value="all">Todos los tiempos</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <TabsContent value="latest" className="space-y-4">
           {stories.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {stories
-                .sort((a, b) => b.upvotes - a.upvotes)
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .map((story) => (
                   <StoryCard key={story.id} story={story} />
                 ))}
@@ -113,14 +157,12 @@ export default function Home() {
             </div>
           )}
         </TabsContent>
-        <TabsContent value="latest" className="space-y-4">
+        <TabsContent value="top" className="space-y-4">
           {stories.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {stories
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .map((story) => (
-                  <StoryCard key={story.id} story={story} />
-                ))}
+              {getFilteredPopularStories().map((story) => (
+                <StoryCard key={story.id} story={story} />
+              ))}
             </div>
           ) : (
             <div className="text-center py-12">
