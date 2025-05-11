@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { submitStory } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-// Añadir el icono de información a las importaciones
 import { AlertTriangle, X, Info, CheckCircle2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
@@ -61,8 +60,9 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   useEffect(() => {
     if (submitSuccess) {
       const timer = setTimeout(() => {
-        router.push("/")
-      }, 3000) // Redirigir después de 3 segundos
+        // Redirigir al dashboard en lugar de la página principal
+        router.push("/dashboard")
+      }, 2000) // Reducimos el tiempo a 2 segundos para una mejor experiencia
       return () => clearTimeout(timer)
     }
   }, [submitSuccess, router])
@@ -209,10 +209,11 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold mb-2">¡Historia enviada con éxito!</h2>
         <p className="mb-6">
-          Tu historia ha sido enviada para revisión. Serás redirigido a la página principal en unos segundos.
+          Tu historia ha sido enviada para revisión. Serás redirigido al panel de control donde podrás ver el estado de
+          tu historia.
         </p>
-        <Button onClick={() => router.push("/")} className="bg-green-600 hover:bg-green-700">
-          Volver a la página principal
+        <Button onClick={() => router.push("/dashboard")} className="bg-green-600 hover:bg-green-700">
+          Ir al panel de control
         </Button>
       </div>
     )
