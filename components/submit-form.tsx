@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { submitStory } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, X } from "lucide-react"
+// Añadir el icono de información a las importaciones
+import { AlertTriangle, X, Info } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import type { Tag } from "@/lib/types"
@@ -70,7 +71,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
     try {
       setIsSubmitting(true)
 
-      await submitStory({
+      const result = await submitStory({
         title,
         content,
         industry,
@@ -78,6 +79,16 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         tags: selectedTags,
         customTags,
       })
+
+      if (!result.success) {
+        // Mostrar el mensaje de error específico si existe
+        toast({
+          title: "Error",
+          description: result.error || "Error al enviar tu historia",
+          variant: "destructive",
+        })
+        return
+      }
 
       toast({
         title: "Historia enviada",
@@ -153,6 +164,15 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         <AlertDescription>
           Para proteger tu identidad, te recomendamos enviar tu historia de forma anónima y evitar incluir detalles que
           puedan identificarte a ti o a tu lugar de trabajo.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="info" className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertTitle>Límite diario</AlertTitle>
+        <AlertDescription>
+          Los usuarios pueden publicar un máximo de 3 historias por día. Esta medida nos ayuda a mantener la calidad del
+          contenido.
         </AlertDescription>
       </Alert>
 

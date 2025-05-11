@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +12,7 @@ import { updateProfile } from "@/lib/actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 import type { Profile } from "@/lib/types"
+import { useSupabase } from "@/lib/supabase-provider"
 
 export function ProfileForm({ profile }: { profile: Profile }) {
   const [displayName, setDisplayName] = useState(profile.display_name || "")
@@ -19,11 +20,57 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   const [website, setWebsite] = useState(profile.website || "")
   const [isLoading, setIsLoading] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
-
+  const [displayNameError, setDisplayNameError] = useState<string | null>(null)
+  const { supabase } = useSupabase()
   const { toast } = useToast()
+
+  // Verificar si el usuario es administrador
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session?.user?.id) {
+        const { data } = await supabase.from("profiles").select("admin").eq("id", session.user.id).single()
+
+        setIsAdmin(!!data?.admin)
+      }
+    }
+
+    checkAdminStatus()
+  }, [supabase])
+
+  const validateDisplayName = (name: string) => {
+    if (!name) return null // Nombre vacío es válido
+
+    // Si no es admin, verificar que no use variaciones de "admin"
+    if (!isAdmin) {
+      const adminRegex = /admin/i
+      if (adminRegex.test(name)) {
+        return "Solo los administradores pueden usar variaciones de 'admin' en su nombre visible"
+      }
+    }
+
+    return null
+  }
+
+  const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value
+    setDisplayName(newName)
+    setDisplayNameError(validateDisplayName(newName))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validar el nombre visible antes de enviar
+    const error = validateDisplayName(displayName)
+    if (error) {
+      setDisplayNameError(error)
+      return
+    }
 
     try {
       setIsLoading(true)
@@ -103,9 +150,14 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           <Input
             id="displayName"
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            onChange={handleDisplayNameChange}
             placeholder="Cómo quieres que te vean los demás"
+            className={displayNameError ? "border-red-500" : ""}
           />
+          {displayNameError && <p className="text-sm text-red-500 mt-1">{displayNameError}</p>}
+          <p className="text-xs text-muted-foreground">
+            Este nombre se mostrará en tus historias y comentarios si lo configuras.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -130,7 +182,11 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           />
         </div>
 
-        <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full bg-purple-600 hover:bg-purple-700"
+          disabled={isLoading || !!displayNameError}
+        >
           {isLoading ? "Guardando..." : "Guardar cambios"}
         </Button>
       </form>

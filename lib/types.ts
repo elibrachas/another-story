@@ -4,6 +4,7 @@ export type Story = {
   content: string
   excerpt?: string
   author: string
+  display_name?: string | null
   industry: string
   upvotes: number
   created_at: string
@@ -18,6 +19,7 @@ export type Comment = {
   user_id?: string
   content: string
   author: string
+  display_name?: string | null
   upvotes: number
   created_at: string
 }

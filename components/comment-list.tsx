@@ -19,10 +19,10 @@ export function CommentList({ comments, storyId }: { comments: Comment[]; storyI
           <div className="flex justify-between">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                {comment.author.charAt(0).toUpperCase()}
+                {(comment.display_name || comment.author).charAt(0).toUpperCase()}
               </div>
               <div>
-                <div className="font-medium">{comment.author}</div>
+                <div className="font-medium">{comment.display_name || comment.author}</div>
                 <div className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
                 </div>

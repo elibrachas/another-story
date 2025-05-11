@@ -46,9 +46,6 @@ const nouns = [
   "Historiador",
 ]
 
-// Lista de números para añadir aleatoriedad
-const numbers = ["", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
-
 /**
  * Genera un nombre de usuario aleatorio
  * @returns Un nombre de usuario aleatorio
@@ -56,8 +53,11 @@ const numbers = ["", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 export function generateUsername(): string {
   const adjective = adjectives[Math.floor(Math.random() * adjectives.length)]
   const noun = nouns[Math.floor(Math.random() * nouns.length)]
-  const number = Math.random() > 0.5 ? numbers[Math.floor(Math.random() * numbers.length)] : ""
 
+  // Generar un número aleatorio de dos dígitos (10-99)
+  const number = Math.floor(Math.random() * 90) + 10
+
+  // Siempre añadir el número de dos dígitos al final
   return `${adjective}${noun}${number}`
 }
 

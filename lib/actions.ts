@@ -5,6 +5,8 @@ import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { generateUniqueUsername } from "@/lib/username-generator"
 
+// Buscar la función createInitialProfile y modificarla para asegurar que siempre se genera un nombre de usuario
+
 export async function createInitialProfile() {
   const supabase = createServerActionClient({ cookies })
 
@@ -21,7 +23,19 @@ export async function createInitialProfile() {
     const { data: existingProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
     if (existingProfile) {
-      return { success: true } // El perfil ya existe, no es necesario hacer nada
+      // Si existe pero no tiene nombre de usuario, generarle uno
+      if (!existingProfile.username) {
+        const username = await generateUniqueUsername(supabase)
+
+        const { error } = await supabase.from("profiles").update({ username }).eq("id", user.id)
+
+        if (error) {
+          console.error("Error updating username for existing profile:", error)
+          throw new Error("Failed to update username for existing profile")
+        }
+      }
+
+      return { success: true }
     }
 
     // Generar un nombre de usuario único
@@ -47,6 +61,8 @@ export async function createInitialProfile() {
     return { success: false, error: "Failed to create initial profile" }
   }
 }
+
+// Modificar la función submitStory para incluir el nombre visible si existe
 
 export async function submitStory({
   title,
@@ -74,16 +90,62 @@ export async function submitStory({
       throw new Error("No session found")
     }
 
-    const author = isAnonymous ? "Anónimo" : session.user.email || "Anónimo"
     const userId = session.user.id
 
-    // Insertar la historia
+    // Verificar si el usuario es administrador y obtener su perfil
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("admin, username, display_name")
+      .eq("id", userId)
+      .single()
+
+    if (profileError) {
+      console.error("Error checking profile:", profileError)
+      throw new Error("Failed to check user profile")
+    }
+
+    const isAdmin = profileData?.admin || false
+    const username = profileData?.username || "Anónimo"
+    const displayName = profileData?.display_name || null
+
+    // Si no es administrador, verificar el límite diario de historias
+    if (!isAdmin) {
+      // Obtener la fecha actual en formato ISO (YYYY-MM-DD)
+      const today = new Date().toISOString().split("T")[0]
+
+      // Consultar cuántas historias ha publicado el usuario hoy
+      const { data: storiesCount, error: countError } = await supabase
+        .from("stories")
+        .select("id", { count: "exact" })
+        .eq("user_id", userId)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`)
+
+      if (countError) {
+        console.error("Error counting daily stories:", countError)
+        throw new Error("Failed to check daily story limit")
+      }
+
+      // Verificar si el usuario ha alcanzado el límite diario (3 historias)
+      if ((storiesCount?.length || 0) >= 3) {
+        return {
+          success: false,
+          error: "Has alcanzado el límite de 3 historias por día. Intenta de nuevo mañana.",
+        }
+      }
+    }
+
+    // Usar el nombre de usuario o "Anónimo" si se seleccionó anónimo
+    const author = isAnonymous ? "Anónimo" : username
+
+    // Insertar la historia con el nombre visible si existe y no es anónimo
     const { data: storyData, error: storyError } = await supabase
       .from("stories")
       .insert({
         title,
         content,
         author,
+        display_name: isAnonymous ? null : displayName, // Incluir el nombre visible si no es anónimo
         industry,
         user_id: userId,
         published: false, // Las historias se envían como no publicadas para revisión
@@ -156,6 +218,8 @@ export async function submitStory({
   }
 }
 
+// Modificar la función submitComment para incluir el nombre visible si existe
+
 export async function submitComment({
   storyId,
   content,
@@ -176,14 +240,32 @@ export async function submitComment({
       throw new Error("No session found")
     }
 
-    const author = isAnonymous ? "Anónimo" : session.user.email || "Anónimo"
     const userId = session.user.id
+
+    // Obtener el perfil del usuario para el nombre de usuario y nombre visible
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", userId)
+      .single()
+
+    if (profileError) {
+      console.error("Error fetching user profile:", profileError)
+      throw new Error("Failed to fetch user profile")
+    }
+
+    const username = profileData?.username || "Anónimo"
+    const displayName = profileData?.display_name || null
+
+    // Usar el nombre de usuario o "Anónimo" si se seleccionó anónimo
+    const author = isAnonymous ? "Anónimo" : username
 
     const { error } = await supabase.from("comments").insert({
       story_id: storyId,
       user_id: userId,
       content,
       author,
+      display_name: isAnonymous ? null : displayName, // Incluir el nombre visible si no es anónimo
     })
 
     if (error) {

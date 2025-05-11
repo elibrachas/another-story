@@ -114,9 +114,9 @@ export default function StoryPage({ params }: { params: { id: string } }) {
           <div className="pt-4 border-t flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                {story.author.charAt(0).toUpperCase()}
+                {(story.display_name || story.author).charAt(0).toUpperCase()}
               </div>
-              <span className="font-medium">{story.author}</span>
+              <span className="font-medium">{story.display_name || story.author}</span>
             </div>
             <div className="text-sm text-muted-foreground">Industria: {story.industry}</div>
           </div>

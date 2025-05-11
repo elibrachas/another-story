@@ -27,7 +27,9 @@ export function StoryCard({ story }: { story: Story }) {
           </div>
         )}
 
-        <div className="text-xs text-muted-foreground">Industria: {story.industry}</div>
+        <div className="text-xs text-muted-foreground">
+          <span>Por: {story.display_name || story.author}</span> • Industria: {story.industry}
+        </div>
       </CardContent>
       <CardFooter className="flex justify-between pt-2 border-t">
         <div className="text-xs text-muted-foreground">

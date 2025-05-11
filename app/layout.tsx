@@ -7,6 +7,8 @@ import { SupabaseProvider } from "@/lib/supabase-provider"
 import Header from "@/components/header"
 import { Footer } from "@/components/footer"
 import "./globals.css"
+import { CookieConsent } from "@/components/cookie-consent"
+import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,6 +24,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Google Analytics - Carga optimizada con Next.js Script */}
+        <Script strategy="afterInteractive" src="https://www.googletagmanager.com/gtag/js?id=G-1FFHMB6H3P" />
+        <Script
+          id="google-analytics"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-1FFHMB6H3P');
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.className} min-h-screen bg-background`}>
         <SupabaseProvider>
           <ThemeProvider attribute="class" defaultTheme="dark">
@@ -30,6 +48,7 @@ export default function RootLayout({
               <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
               <Footer />
             </div>
+            <CookieConsent />
             <Toaster />
           </ThemeProvider>
         </SupabaseProvider>
