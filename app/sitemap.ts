@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Obtener historias publicadas para el sitemap
     const { data: stories, error: storiesError } = await supabase
       .from("stories")
-      .select("id, created_at, updated_at")
+      .select("id, created_at") // Solo seleccionamos id y created_at
       .eq("published", true)
       .order("created_at", { ascending: false })
 
@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const storyRoutes =
       stories?.map((story) => ({
         url: `${baseUrl}/story/${story.id}`,
-        lastModified: new Date(story.updated_at || story.created_at),
+        lastModified: new Date(story.created_at), // Usamos created_at en lugar de updated_at
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })) || []
