@@ -5,11 +5,13 @@ import { StoryCard } from "@/components/story-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlusCircle, TagIcon } from "lucide-react"
+import { PlusCircle, TagIcon, AlertCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { TagBadge } from "@/components/tag-badge"
-import { getStoriesClient, getAllTagsClient } from "@/lib/supabase-client"
+import { getStoriesClient, getAllTagsClient, clearCache } from "@/lib/supabase-client"
 import type { Story, Tag } from "@/lib/types"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { OfflineBanner } from "@/components/offline-banner"
 
 export default function Home() {
   const [stories, setStories] = useState<Story[]>([])
@@ -18,29 +20,52 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [popularTimeFilter, setPopularTimeFilter] = useState<"week" | "month" | "all">("all")
   const [activeTab, setActiveTab] = useState<"latest" | "top">("latest")
+  const [isRetrying, setIsRetrying] = useState(false)
+
+  const loadData = async (forceRefresh = false) => {
+    try {
+      setLoading(true)
+      setError(null)
+      setIsRetrying(forceRefresh)
+
+      if (forceRefresh) {
+        // Limpiar caché para forzar recarga de datos
+        clearCache()
+      }
+
+      // Intentar cargar historias
+      let storiesData: Story[] = []
+      try {
+        storiesData = await getStoriesClient()
+      } catch (err) {
+        console.error("Error al cargar historias:", err)
+        setError("Error al cargar las historias. Por favor, inténtalo de nuevo más tarde.")
+      }
+
+      // Intentar cargar etiquetas (incluso si falló la carga de historias)
+      let tagsData: Tag[] = []
+      try {
+        tagsData = await getAllTagsClient()
+      } catch (err) {
+        console.error("Error al cargar etiquetas:", err)
+        // No establecemos error aquí para permitir que la página se cargue con historias
+      }
+
+      // Verificar que solo se muestren historias publicadas
+      const publishedStories = storiesData.filter((story) => story.published === true)
+
+      setStories(publishedStories)
+      setTags(tagsData)
+    } catch (err) {
+      console.error("Error general al cargar datos:", err)
+      setError("Error al cargar el contenido. Por favor, inténtalo de nuevo más tarde.")
+    } finally {
+      setLoading(false)
+      setIsRetrying(false)
+    }
+  }
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Cargar historias y etiquetas
-        const [storiesData, tagsData] = await Promise.all([getStoriesClient(), getAllTagsClient()])
-
-        // Verificar que solo se muestren historias publicadas
-        const publishedStories = storiesData.filter((story) => story.published === true)
-
-        setStories(publishedStories)
-        setTags(tagsData)
-      } catch (err) {
-        console.error("Error al cargar datos:", err)
-        setError("Error al cargar el contenido. Por favor, inténtalo de nuevo más tarde.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
     loadData()
   }, [])
 
@@ -66,23 +91,11 @@ export default function Home() {
       .sort((a, b) => b.upvotes - a.upvotes)
   }
 
-  if (loading) {
+  if (loading && !isRetrying) {
     return (
       <div className="text-center py-12">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
         <p className="mt-4 text-muted-foreground">Cargando historias...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold mb-4">Error al cargar contenido</h2>
-        <p className="text-muted-foreground mb-6">{error}</p>
-        <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
-          Reintentar
-        </Button>
       </div>
     )
   }
@@ -103,6 +116,38 @@ export default function Home() {
           Experiencias reales sobre ambientes laborales. Lee, aprende y sabe que no estás solo.
         </p>
       </section>
+
+      <OfflineBanner />
+
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={() => loadData(true)} className="ml-4" disabled={isRetrying}>
+              {isRetrying ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Reintentando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reintentar
+                </>
+              )}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isRetrying && (
+        <div className="flex justify-center items-center py-4">
+          <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+          <span>Actualizando datos...</span>
+        </div>
+      )}
 
       {tags.length > 0 && (
         <section>
@@ -153,7 +198,26 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
+              <p className="text-muted-foreground">
+                {error
+                  ? "No se pudieron cargar las historias."
+                  : "No hay historias publicadas aún. ¡Sé el primero en compartir!"}
+              </p>
+              {error && (
+                <Button onClick={() => loadData(true)} className="mt-4" variant="outline" disabled={isRetrying}>
+                  {isRetrying ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Reintentando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Reintentar
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>
@@ -166,7 +230,26 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
+              <p className="text-muted-foreground">
+                {error
+                  ? "No se pudieron cargar las historias."
+                  : "No hay historias publicadas aún. ¡Sé el primero en compartir!"}
+              </p>
+              {error && (
+                <Button onClick={() => loadData(true)} className="mt-4" variant="outline" disabled={isRetrying}>
+                  {isRetrying ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Reintentando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Reintentar
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>
