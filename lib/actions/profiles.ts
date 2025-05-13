@@ -3,117 +3,164 @@
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
-import { generateUniqueUsername } from "@/lib/username-generator"
 
-// Función para crear el perfil inicial de un usuario
-export async function createInitialProfile() {
-  const supabase = createServerActionClient({ cookies })
-
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      throw new Error("No user found")
-    }
-
-    // Verificar si ya existe un perfil para este usuario
-    const { data: existingProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-    if (existingProfile) {
-      // Si existe pero no tiene nombre de usuario, generarle uno
-      if (!existingProfile.username) {
-        const username = await generateUniqueUsername(supabase)
-
-        const { error } = await supabase.from("profiles").update({ username }).eq("id", user.id)
-
-        if (error) {
-          console.error("Error updating username for existing profile:", error)
-          throw new Error("Failed to update username for existing profile")
-        }
-      }
-
-      return { success: true }
-    }
-
-    // Generar un nombre de usuario único
-    const username = await generateUniqueUsername(supabase)
-
-    // Crear el perfil inicial
-    const { error } = await supabase.from("profiles").insert({
-      id: user.id,
-      username: username,
-      email: user.email,
-      admin: false, // Asegurarse de que los nuevos usuarios no sean administradores
-    })
-
-    if (error) {
-      console.error("Error creating initial profile:", error)
-      throw new Error("Failed to create initial profile")
-    }
-
-    revalidatePath("/profile") // O cualquier otra ruta relevante
-    return { success: true }
-  } catch (error) {
-    console.error("Error in createInitialProfile action:", error)
-    return { success: false, error: "Failed to create initial profile" }
-  }
-}
-
-// Función para actualizar el perfil de un usuario
-export async function updateProfile({
-  displayName,
-  bio,
-  website,
-  regenerateUsername,
-}: {
-  displayName?: string
-  bio?: string
-  website?: string
-  regenerateUsername?: boolean
-}) {
-  const supabase = createServerActionClient({ cookies })
+export async function updateProfile(formData: FormData) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
+    // Verificar si el usuario está autenticado
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
     if (!session) {
-      throw new Error("No session found")
+      return { success: false, error: "Debes iniciar sesión para actualizar tu perfil" }
     }
 
-    const userId = session.user.id
+    const displayName = formData.get("displayName") as string
+    const bio = formData.get("bio") as string
 
-    const updateData: { display_name?: string; bio?: string; website?: string; username?: string } = {}
-
-    if (displayName !== undefined) {
-      updateData.display_name = displayName
-    }
-    if (bio !== undefined) {
-      updateData.bio = bio
-    }
-    if (website !== undefined) {
-      updateData.website = website
+    // Validar campos
+    if (!displayName.trim()) {
+      return { success: false, error: "El nombre de visualización es obligatorio" }
     }
 
-    if (regenerateUsername) {
-      const username = await generateUniqueUsername(supabase)
-      updateData.username = username
-    }
-
-    const { error } = await supabase.from("profiles").update(updateData).eq("id", userId)
+    // Actualizar el perfil
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName.trim(),
+        bio: bio ? bio.trim() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", session.user.id)
 
     if (error) {
-      console.error("Error updating profile:", error)
-      throw new Error("Failed to update profile")
+      console.error("Error al actualizar perfil:", error)
+      return { success: false, error: "Error al actualizar el perfil" }
     }
 
     revalidatePath("/profile")
     return { success: true }
   } catch (error) {
-    console.error("Error in updateProfile action:", error)
-    return { success: false, error: "Failed to update profile" }
+    console.error("Error al actualizar perfil:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function getUserProfile() {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario está autenticado
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      return { success: false, error: "No hay sesión activa" }
+    }
+
+    // Obtener el perfil del usuario
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+
+    if (error) {
+      console.error("Error al obtener perfil:", error)
+      return { success: false, error: "Error al obtener el perfil" }
+    }
+
+    return { success: true, profile: data }
+  } catch (error) {
+    console.error("Error al obtener perfil:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function getUserStories() {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario está autenticado
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      return { success: false, error: "No hay sesión activa" }
+    }
+
+    // Obtener las historias del usuario
+    const { data, error } = await supabase
+      .from("stories")
+      .select(`
+        *,
+        tags:story_tags (
+          tags:tag_id (
+            id,
+            name,
+            color
+          )
+        )
+      `)
+      .eq("author", session.user.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error al obtener historias:", error)
+      return { success: false, error: "Error al obtener las historias" }
+    }
+
+    // Transformar los datos
+    const stories = data.map((story) => ({
+      ...story,
+      tags: story.tags.map((tag: any) => tag.tags),
+    }))
+
+    return { success: true, stories }
+  } catch (error) {
+    console.error("Error al obtener historias:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function getUserComments() {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario está autenticado
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      return { success: false, error: "No hay sesión activa" }
+    }
+
+    // Obtener los comentarios del usuario
+    const { data, error } = await supabase
+      .from("comments")
+      .select(`
+        *,
+        stories:story_id (
+          id,
+          title
+        )
+      `)
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error al obtener comentarios:", error)
+      return { success: false, error: "Error al obtener los comentarios" }
+    }
+
+    return { success: true, comments: data }
+  } catch (error) {
+    console.error("Error al obtener comentarios:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
   }
 }

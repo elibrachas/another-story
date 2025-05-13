@@ -3,147 +3,159 @@
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import type { Comment } from "@/lib/types"
 
-// Función para enviar un comentario
-export async function submitComment({
-  storyId,
-  content,
-  isAnonymous,
-}: {
-  storyId: string
-  content: string
-  isAnonymous: boolean
-}) {
-  const supabase = createServerActionClient({ cookies })
+export async function addComment({ storyId, content }: { storyId: string; content: string }) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
+    // Verificar si el usuario está autenticado
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
     if (!session) {
-      throw new Error("No session found")
+      return { success: false, error: "Debes iniciar sesión para comentar" }
     }
 
-    const userId = session.user.id
+    // Validar contenido
+    if (!content.trim()) {
+      return { success: false, error: "El comentario no puede estar vacío" }
+    }
 
-    // Obtener el perfil del usuario para el nombre de usuario y nombre visible
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("username, display_name")
-      .eq("id", userId)
+    // Insertar el comentario
+    const { data: comment, error: commentError } = await supabase
+      .from("comments")
+      .insert({
+        story_id: storyId,
+        user_id: session.user.id,
+        content,
+        approved: false, // Los comentarios requieren aprobación
+      })
+      .select()
       .single()
 
-    if (profileError) {
-      console.error("Error fetching user profile:", profileError)
-      throw new Error("Failed to fetch user profile")
+    if (commentError) {
+      console.error("Error al insertar comentario:", commentError)
+      return { success: false, error: "Error al guardar el comentario" }
     }
 
-    const username = profileData?.username || "Anónimo"
-    const displayName = profileData?.display_name || null
-
-    // Usar el nombre de usuario o "Anónimo" si se seleccionó anónimo
-    const author = isAnonymous ? "Anónimo" : username
-
-    const { error } = await supabase.from("comments").insert({
-      story_id: storyId,
-      user_id: userId,
-      content,
-      author,
-      display_name: isAnonymous ? null : displayName, // Incluir el nombre visible si no es anónimo
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "comment_submitted",
+      user_id: session.user.id,
+      details: { comment_id: comment.id, story_id: storyId },
     })
 
-    if (error) {
-      console.error("Error submitting comment:", error)
-      throw new Error("Failed to submit comment")
-    }
-
     revalidatePath(`/story/${storyId}`)
-    return { success: true }
+    return { success: true, commentId: comment.id }
   } catch (error) {
-    console.error("Error in submitComment action:", error)
-    return { success: false, error: "Failed to submit comment" }
+    console.error("Error al enviar comentario:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
   }
 }
 
-// Función para dar upvote a un comentario
-export async function upvoteComment(commentId: string, storyId: string) {
-  const supabase = createServerActionClient({ cookies })
+export async function upvoteComment(commentId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
+    // Verificar si el usuario está autenticado
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
     if (!session) {
-      throw new Error("No session found")
+      return { success: false, error: "Debes iniciar sesión para votar" }
     }
 
     const userId = session.user.id
 
-    // Verificar si el usuario ya votó por este comentario
-    const { data: existingVote, error: checkError } = await supabase
+    // Verificar si el usuario ya ha votado por este comentario
+    const { data: existingUpvote, error: checkError } = await supabase
       .from("comment_upvotes")
       .select("*")
       .eq("comment_id", commentId)
       .eq("user_id", userId)
-      .single()
+      .maybeSingle()
 
-    if (checkError && checkError.code !== "PGRST116") {
-      console.error("Error checking existing comment vote:", checkError)
-      return { success: false, error: "Error al verificar voto existente" }
+    if (checkError) {
+      console.error("Error al verificar upvote:", checkError)
+      return { success: false, error: "Error al verificar voto" }
     }
 
-    // Si el usuario ya votó, no hacer nada y devolver éxito
-    if (existingVote) {
-      return { success: true, alreadyVoted: true }
+    if (existingUpvote) {
+      return { success: false, error: "Ya has votado por este comentario" }
     }
 
-    // Primero, obtener el valor actual de upvotes
-    const { data: currentComment, error: fetchError } = await supabase
-      .from("comments")
-      .select("upvotes")
-      .eq("id", commentId)
-      .single()
-
-    if (fetchError) {
-      console.error("Error fetching current comment upvotes:", fetchError)
-      return { success: false, error: "Error al obtener el contador actual de votos" }
-    }
-
-    // Calcular el nuevo valor de upvotes
-    const currentUpvotes = currentComment?.upvotes || 0
-    const newUpvotes = currentUpvotes + 1
-
-    // Registrar el voto del usuario en la tabla de votos
+    // Insertar el upvote
     const { error: insertError } = await supabase.from("comment_upvotes").insert({
       comment_id: commentId,
       user_id: userId,
     })
 
     if (insertError) {
-      console.error("Error recording comment vote:", insertError)
-      return { success: false, error: "Error al registrar el voto" }
+      console.error("Error al insertar upvote:", insertError)
+      return { success: false, error: "Error al registrar voto" }
     }
 
-    // Incrementar el contador de votos en la tabla de comentarios con el valor explícito
-    const { error: updateError } = await supabase.from("comments").update({ upvotes: newUpvotes }).eq("id", commentId)
+    // Incrementar el contador de upvotes en el comentario
+    const { error: updateError } = await supabase.rpc("increment_comment_upvotes", { comment_id_param: commentId })
 
     if (updateError) {
-      console.error("Error upvoting comment:", updateError)
-      // Intentar revertir la inserción del voto
-      await supabase.from("comment_upvotes").delete().eq("comment_id", commentId).eq("user_id", userId)
-      return { success: false, error: "Error al actualizar el contador de votos" }
+      console.error("Error al incrementar upvotes:", updateError)
+      // No retornamos error aquí, el upvote ya se registró
     }
 
-    revalidatePath(`/story/${storyId}`)
+    // Obtener el comentario y la historia asociada
+    const { data: comment, error: commentError } = await supabase
+      .from("comments")
+      .select("story_id")
+      .eq("id", commentId)
+      .single()
 
-    return {
-      success: true,
-      newUpvoteCount: newUpvotes,
+    if (!commentError) {
+      revalidatePath(`/story/${comment.story_id}`)
     }
+
+    return { success: true }
   } catch (error) {
-    console.error("Error in upvoteComment action:", error)
-    return { success: false, error: "Error al procesar el voto" }
+    console.error("Error al procesar upvote:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function getCommentsByStoryId(storyId: string): Promise<Comment[]> {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    const { data, error } = await supabase
+      .from("comments")
+      .select(`
+        *,
+        profiles:user_id (username, display_name)
+      `)
+      .eq("story_id", storyId)
+      .eq("approved", true)
+      .order("created_at", { ascending: true })
+
+    if (error) {
+      console.error("Error al obtener comentarios:", error)
+      return []
+    }
+
+    // Transformar los datos para que coincidan con el tipo Comment
+    const comments: Comment[] = data.map((comment: any) => ({
+      ...comment,
+      username: comment.profiles.username,
+      display_name: comment.profiles.display_name,
+    }))
+
+    return comments
+  } catch (error) {
+    console.error("Error al obtener comentarios:", error)
+    return []
   }
 }

@@ -4,6 +4,25 @@ import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
+// Función auxiliar para verificar si el usuario es administrador
+async function isAdmin(supabase: any) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session) {
+    return false
+  }
+
+  const { data, error } = await supabase.from("profiles").select("admin").eq("id", session.user.id).single()
+
+  if (error || !data) {
+    return false
+  }
+
+  return data.admin === true
+}
+
 // Función para obtener estadísticas de la aplicación
 export async function getAppStats(): Promise<{ success: boolean; stats?: any; error?: string }> {
   const supabase = createServerActionClient({ cookies })
@@ -63,114 +82,395 @@ export async function getAppStats(): Promise<{ success: boolean; stats?: any; er
   }
 }
 
-// Función para aprobar una historia
-export async function approveStory(storyId: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = createServerActionClient({ cookies })
-
-  try {
-    const { error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
-
-    if (error) {
-      console.error("Error approving story:", error)
-      return { success: false, error: error.message }
-    }
-
-    revalidatePath("/admin")
-    revalidatePath("/")
-    return { success: true }
-  } catch (error) {
-    console.error("Error in approveStory action:", error)
-    return { success: false, error: "Failed to approve story" }
-  }
-}
-
-// Función para rechazar una historia
-export async function rejectStory(storyId: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = createServerActionClient({ cookies })
-
-  try {
-    const { error } = await supabase.from("stories").delete().eq("id", storyId)
-
-    if (error) {
-      console.error("Error rejecting story:", error)
-      return { success: false, error: error.message }
-    }
-
-    revalidatePath("/admin")
-    return { success: true }
-  } catch (error) {
-    console.error("Error in rejectStory action:", error)
-    return { success: false, error: "Failed to reject story" }
-  }
-}
-
-// Función para aprobar una historia (versión admin)
-export async function adminApproveStory(
-  storyId: string,
-): Promise<{ success: boolean; error?: string; logs?: string[] }> {
-  const supabase = createServerActionClient({ cookies })
-  const logs: string[] = []
+export async function approveStory(storyId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
     // Verificar si el usuario es administrador
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      return { success: false, error: "No autenticado", logs }
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
     }
 
-    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
-
-    if (!profileData?.admin) {
-      return { success: false, error: "No tienes permisos de administrador", logs }
-    }
+    // Obtener la sesión del usuario
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
     // Aprobar la historia
-    const { error } = await supabase.from("stories").update({ published: true }).eq("id", storyId)
+    const { error } = await supabase
+      .from("stories")
+      .update({
+        published: true,
+        approved_by: session?.user.id,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", storyId)
 
     if (error) {
-      console.error("Error approving story:", error)
-      return { success: false, error: error.message, logs }
+      console.error("Error al aprobar historia:", error)
+      return { success: false, error: "Error al aprobar la historia" }
     }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "story_approved",
+      user_id: session?.user.id,
+      details: { story_id: storyId },
+    })
 
     revalidatePath("/admin")
     revalidatePath("/")
-    return { success: true, logs }
+    return { success: true }
   } catch (error) {
-    console.error("Error in adminApproveStory action:", error)
-    return { success: false, error: "Failed to approve story", logs }
+    console.error("Error al aprobar historia:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
   }
 }
 
-// Función para rechazar una historia (versión admin)
-export async function adminRejectStory(storyId: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = createServerActionClient({ cookies })
+export async function rejectStory(storyId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
     // Verificar si el usuario es administrador
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      return { success: false, error: "No autenticado" }
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
     }
 
-    const { data: profileData } = await supabase.from("profiles").select("admin").eq("id", userData.user.id).single()
+    // Obtener la sesión del usuario
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (!profileData?.admin) {
-      return { success: false, error: "No tienes permisos de administrador" }
+    // Rechazar la historia
+    const { error } = await supabase
+      .from("stories")
+      .update({
+        published: false,
+        rejected: true,
+        rejected_by: session?.user.id,
+        rejected_at: new Date().toISOString(),
+      })
+      .eq("id", storyId)
+
+    if (error) {
+      console.error("Error al rechazar historia:", error)
+      return { success: false, error: "Error al rechazar la historia" }
+    }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "story_rejected",
+      user_id: session?.user.id,
+      details: { story_id: storyId },
+    })
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error al rechazar historia:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function deleteStory(storyId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario es administrador
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
+    }
+
+    // Obtener la sesión del usuario
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    // Eliminar las etiquetas asociadas a la historia
+    const { error: tagError } = await supabase.from("story_tags").delete().eq("story_id", storyId)
+
+    if (tagError) {
+      console.error("Error al eliminar etiquetas:", tagError)
+      // Continuamos con la eliminación de la historia
+    }
+
+    // Eliminar los comentarios asociados a la historia
+    const { error: commentError } = await supabase.from("comments").delete().eq("story_id", storyId)
+
+    if (commentError) {
+      console.error("Error al eliminar comentarios:", commentError)
+      // Continuamos con la eliminación de la historia
+    }
+
+    // Eliminar los upvotes asociados a la historia
+    const { error: upvoteError } = await supabase.from("upvotes").delete().eq("story_id", storyId)
+
+    if (upvoteError) {
+      console.error("Error al eliminar upvotes:", upvoteError)
+      // Continuamos con la eliminación de la historia
     }
 
     // Eliminar la historia
     const { error } = await supabase.from("stories").delete().eq("id", storyId)
 
     if (error) {
-      console.error("Error rejecting story:", error)
-      return { success: false, error: error.message }
+      console.error("Error al eliminar historia:", error)
+      return { success: false, error: "Error al eliminar la historia" }
     }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "story_deleted",
+      user_id: session?.user.id,
+      details: { story_id: storyId },
+    })
+
+    revalidatePath("/admin")
+    revalidatePath("/")
+    return { success: true }
+  } catch (error) {
+    console.error("Error al eliminar historia:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function updateStory(formData: FormData) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario es administrador
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
+    }
+
+    const storyId = formData.get("id") as string
+    const title = formData.get("title") as string
+    const content = formData.get("content") as string
+    const industry = formData.get("industry") as string
+    const published = formData.get("published") === "on"
+    const tagIds = formData.getAll("tags") as string[]
+
+    // Validar campos obligatorios
+    if (!storyId || !title.trim() || !content.trim() || !industry.trim()) {
+      return { success: false, error: "Todos los campos son obligatorios" }
+    }
+
+    // Obtener la sesión
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    // Actualizar la historia
+    const { error } = await supabase
+      .from("stories")
+      .update({
+        title,
+        content,
+        industry,
+        published,
+        updated_at: new Date().toISOString(),
+        updated_by: session?.user.id,
+      })
+      .eq("id", storyId)
+
+    if (error) {
+      console.error("Error al actualizar historia:", error)
+      return { success: false, error: "Error al actualizar la historia" }
+    }
+
+    // Eliminar las etiquetas existentes
+    const { error: deleteTagsError } = await supabase.from("story_tags").delete().eq("story_id", storyId)
+
+    if (deleteTagsError) {
+      console.error("Error al eliminar etiquetas:", deleteTagsError)
+      // Continuamos con la inserción de nuevas etiquetas
+    }
+
+    // Insertar las nuevas etiquetas
+    if (tagIds.length > 0) {
+      const storyTags = tagIds.map((tagId) => ({
+        story_id: storyId,
+        tag_id: tagId,
+      }))
+
+      const { error: insertTagsError } = await supabase.from("story_tags").insert(storyTags)
+
+      if (insertTagsError) {
+        console.error("Error al insertar etiquetas:", insertTagsError)
+        // No retornamos error aquí, la historia ya se actualizó
+      }
+    }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "story_updated",
+      user_id: session?.user.id,
+      details: { story_id: storyId, title },
+    })
+
+    revalidatePath(`/story/${storyId}`)
+    revalidatePath("/admin")
+    revalidatePath("/")
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error al actualizar historia:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function approveComment(commentId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario es administrador
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
+    }
+
+    // Obtener la sesión del usuario
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    // Aprobar el comentario
+    const { error } = await supabase
+      .from("comments")
+      .update({
+        approved: true,
+        approved_by: session?.user.id,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", commentId)
+
+    if (error) {
+      console.error("Error al aprobar comentario:", error)
+      return { success: false, error: "Error al aprobar el comentario" }
+    }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "comment_approved",
+      user_id: session?.user.id,
+      details: { comment_id: commentId },
+    })
 
     revalidatePath("/admin")
     return { success: true }
   } catch (error) {
-    console.error("Error in adminRejectStory action:", error)
-    return { success: false, error: "Failed to reject story" }
+    console.error("Error al aprobar comentario:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function rejectComment(commentId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario es administrador
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
+    }
+
+    // Obtener la sesión del usuario
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    // Rechazar el comentario
+    const { error } = await supabase
+      .from("comments")
+      .update({
+        approved: false,
+        rejected: true,
+        rejected_by: session?.user.id,
+        rejected_at: new Date().toISOString(),
+      })
+      .eq("id", commentId)
+
+    if (error) {
+      console.error("Error al rechazar comentario:", error)
+      return { success: false, error: "Error al rechazar el comentario" }
+    }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "comment_rejected",
+      user_id: session?.user.id,
+      details: { comment_id: commentId },
+    })
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error al rechazar comentario:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function deleteComment(commentId: string) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    // Verificar si el usuario es administrador
+    const admin = await isAdmin(supabase)
+
+    if (!admin) {
+      return { success: false, error: "No tienes permisos para realizar esta acción" }
+    }
+
+    // Obtener la sesión del usuario
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    // Eliminar los upvotes asociados al comentario
+    const { error: upvoteError } = await supabase.from("comment_upvotes").delete().eq("comment_id", commentId)
+
+    if (upvoteError) {
+      console.error("Error al eliminar upvotes:", upvoteError)
+      // Continuamos con la eliminación del comentario
+    }
+
+    // Eliminar el comentario
+    const { error } = await supabase.from("comments").delete().eq("id", commentId)
+
+    if (error) {
+      console.error("Error al eliminar comentario:", error)
+      return { success: false, error: "Error al eliminar el comentario" }
+    }
+
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "comment_deleted",
+      user_id: session?.user.id,
+      details: { comment_id: commentId },
+    })
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error al eliminar comentario:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
   }
 }
 
@@ -208,7 +508,7 @@ export async function adminDeleteComment(commentId: string): Promise<{ success: 
 }
 
 // Función para actualizar una historia
-export async function updateStory({
+export async function updateStory_old({
   id,
   title,
   content,

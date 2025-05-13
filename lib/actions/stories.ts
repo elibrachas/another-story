@@ -3,238 +3,344 @@
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { generateUsername } from "@/lib/username-generator"
+import type { Story } from "@/lib/types"
 
-// Función para enviar una historia
-export async function submitStory({
-  title,
-  content,
-  industry,
-  isAnonymous,
-  tags,
-  customTags,
-}: {
-  title: string
-  content: string
-  industry: string
-  isAnonymous: boolean
-  tags: string[]
-  customTags: string[]
-}) {
-  const supabase = createServerActionClient({ cookies })
+export async function submitStory(formData: FormData) {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
+    // Verificar si el usuario está autenticado
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
     if (!session) {
-      throw new Error("No session found")
+      return { success: false, error: "Debes iniciar sesión para enviar una historia" }
     }
 
-    const userId = session.user.id
+    const title = formData.get("title") as string
+    const content = formData.get("content") as string
+    const industry = formData.get("industry") as string
+    const anonymous = formData.get("anonymous") === "on"
+    const tagIds = formData.getAll("tags") as string[]
 
-    // Verificar si el usuario es administrador y obtener su perfil
-    const { data: profileData, error: profileError } = await supabase
+    // Validar campos obligatorios
+    if (!title.trim() || !content.trim() || !industry.trim()) {
+      return { success: false, error: "Todos los campos son obligatorios" }
+    }
+
+    // Obtener el perfil del usuario
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("admin, username, display_name")
-      .eq("id", userId)
+      .select("*")
+      .eq("id", session.user.id)
       .single()
 
-    if (profileError) {
-      console.error("Error checking profile:", profileError)
-      throw new Error("Failed to check user profile")
+    if (profileError && profileError.code !== "PGRST116") {
+      console.error("Error al obtener perfil:", profileError)
+      return { success: false, error: "Error al obtener información del usuario" }
     }
 
-    const isAdmin = profileData?.admin || false
-    const username = profileData?.username || "Anónimo"
-    const displayName = profileData?.display_name || null
+    // Si el usuario no tiene un perfil, crear uno
+    if (!profile) {
+      const username = generateUsername()
 
-    // Si no es administrador, verificar el límite diario de historias
-    if (!isAdmin) {
-      // Obtener la fecha actual en formato ISO (YYYY-MM-DD)
-      const today = new Date().toISOString().split("T")[0]
+      const { error: insertProfileError } = await supabase.from("profiles").insert({
+        id: session.user.id,
+        username,
+        display_name: username,
+      })
 
-      // Consultar cuántas historias ha publicado el usuario hoy
-      const { data: storiesCount, error: countError } = await supabase
-        .from("stories")
-        .select("id", { count: "exact" })
-        .eq("user_id", userId)
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`)
-
-      if (countError) {
-        console.error("Error counting daily stories:", countError)
-        throw new Error("Failed to check daily story limit")
-      }
-
-      // Verificar si el usuario ha alcanzado el límite diario (3 historias)
-      if ((storiesCount?.length || 0) >= 3) {
-        return {
-          success: false,
-          error: "Has alcanzado el límite de 3 historias por día. Intenta de nuevo mañana.",
-        }
+      if (insertProfileError) {
+        console.error("Error al crear perfil:", insertProfileError)
+        return { success: false, error: "Error al crear perfil de usuario" }
       }
     }
 
-    // Usar el nombre de usuario o "Anónimo" si se seleccionó anónimo
-    const author = isAnonymous ? "Anónimo" : username
-
-    // Insertar la historia con el nombre visible si existe y no es anónimo
-    const { data: storyData, error: storyError } = await supabase
+    // Insertar la historia
+    const { data: story, error: storyError } = await supabase
       .from("stories")
       .insert({
         title,
         content,
-        author,
-        display_name: isAnonymous ? null : displayName, // Incluir el nombre visible si no es anónimo
         industry,
-        user_id: userId,
-        published: false, // Las historias se envían como no publicadas para revisión
+        author: session.user.id,
+        anonymous,
+        published: false, // Las historias requieren aprobación
       })
       .select()
       .single()
 
     if (storyError) {
-      console.error("Error submitting story:", storyError)
-      throw new Error("Failed to submit story")
+      console.error("Error al insertar historia:", storyError)
+      return { success: false, error: "Error al guardar la historia" }
     }
 
-    const storyId = storyData.id
+    // Si hay etiquetas seleccionadas, asociarlas a la historia
+    if (tagIds.length > 0) {
+      const storyTags = tagIds.map((tagId) => ({
+        story_id: story.id,
+        tag_id: tagId,
+      }))
 
-    // Asignar etiquetas predefinidas
-    if (tags && tags.length > 0) {
-      const storyTags = tags.map((tagId) => ({ story_id: storyId, tag_id: tagId }))
+      const { error: tagError } = await supabase.from("story_tags").insert(storyTags)
 
-      const { error: tagsError } = await supabase.from("story_tags").insert(storyTags)
-
-      if (tagsError) {
-        console.error("Error assigning tags to story:", tagsError)
-        throw new Error("Failed to assign tags to story")
+      if (tagError) {
+        console.error("Error al asociar etiquetas:", tagError)
+        // No retornamos error aquí, la historia ya se guardó
       }
     }
 
-    // Crear y asignar etiquetas personalizadas
-    if (customTags && customTags.length > 0) {
-      for (const tagName of customTags) {
-        // Verificar si la etiqueta ya existe (para evitar duplicados)
-        const { data: existingTag } = await supabase.from("tags").select("*").eq("name", tagName).single()
-
-        let tagId: string
-
-        if (existingTag) {
-          // Si la etiqueta existe, usar su ID
-          tagId = existingTag.id
-        } else {
-          // Si no existe, crear la etiqueta
-          const { data: newTag, error: newTagError } = await supabase
-            .from("tags")
-            .insert({ name: tagName })
-            .select()
-            .single()
-
-          if (newTagError) {
-            console.error("Error creating custom tag:", newTagError)
-            throw new Error("Failed to create custom tag")
-          }
-
-          tagId = newTag.id
-        }
-
-        // Asignar la etiqueta a la historia
-        const { error: customTagError } = await supabase.from("story_tags").insert({ story_id: storyId, tag_id: tagId })
-
-        if (customTagError) {
-          console.error("Error assigning custom tag to story:", customTagError)
-          throw new Error("Failed to assign custom tag to story")
-        }
-      }
-    }
+    // Registrar la acción en los logs de administración
+    await supabase.from("admin_logs").insert({
+      action: "story_submitted",
+      user_id: session.user.id,
+      details: { story_id: story.id, title },
+    })
 
     revalidatePath("/")
-    revalidatePath("/submit")
-    return { success: true }
+    return { success: true, storyId: story.id }
   } catch (error) {
-    console.error("Error in submitStory action:", error)
-    return { success: false, error: "Failed to submit story" }
+    console.error("Error al enviar historia:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
   }
 }
 
-// Función para dar upvote a una historia
 export async function upvoteStory(storyId: string) {
-  const supabase = createServerActionClient({ cookies })
-  console.log(`[upvoteStory] Iniciando proceso para story_id: ${storyId}`)
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
 
   try {
+    // Verificar si el usuario está autenticado
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
     if (!session) {
-      console.log("[upvoteStory] No hay sesión activa")
-      throw new Error("No session found")
+      return { success: false, error: "Debes iniciar sesión para votar" }
     }
 
     const userId = session.user.id
-    console.log(`[upvoteStory] Usuario: ${userId}`)
 
-    // Verificar si el usuario ya votó por esta historia
-    console.log(`[upvoteStory] Verificando si el usuario ya votó`)
-    const { data: existingVote, error: checkError } = await supabase
+    // Verificar si el usuario ya ha votado por esta historia
+    const { data: existingUpvote, error: checkError } = await supabase
       .from("upvotes")
       .select("*")
       .eq("story_id", storyId)
       .eq("user_id", userId)
-      .single()
+      .maybeSingle()
 
-    if (checkError && checkError.code !== "PGRST116") {
-      // PGRST116 es el código para "no se encontró ningún registro"
-      console.error("[upvoteStory] Error al verificar voto existente:", checkError)
-      return { success: false, error: "Error al verificar voto existente" }
+    if (checkError) {
+      console.error("Error al verificar upvote:", checkError)
+      return { success: false, error: "Error al verificar voto" }
     }
 
-    // Si el usuario ya votó, no hacer nada y devolver éxito
-    if (existingVote) {
-      console.log("[upvoteStory] El usuario ya había votado por esta historia")
-      return { success: true, alreadyVoted: true }
+    if (existingUpvote) {
+      return { success: false, error: "Ya has votado por esta historia" }
     }
 
-    // Simplemente insertar el voto - el trigger se encargará de actualizar el contador
-    console.log(`[upvoteStory] Registrando voto en la tabla upvotes`)
+    // Insertar el upvote
     const { error: insertError } = await supabase.from("upvotes").insert({
       story_id: storyId,
       user_id: userId,
     })
 
     if (insertError) {
-      console.error("[upvoteStory] Error al registrar voto:", insertError)
-      return { success: false, error: "Error al registrar el voto" }
+      console.error("Error al insertar upvote:", insertError)
+      return { success: false, error: "Error al registrar voto" }
     }
 
-    // Obtener el nuevo contador de votos
-    console.log(`[upvoteStory] Obteniendo contador actualizado`)
-    const { data: updatedStory, error: fetchError } = await supabase
+    // Obtener el nuevo recuento de upvotes
+    const { data: story, error: storyError } = await supabase
       .from("stories")
       .select("upvotes")
       .eq("id", storyId)
       .single()
 
-    if (fetchError) {
-      console.error("[upvoteStory] Error al obtener contador actualizado:", fetchError)
-    } else {
-      console.log(`[upvoteStory] Nuevo contador: ${updatedStory?.upvotes}`)
+    if (storyError) {
+      console.error("Error al obtener recuento de upvotes:", storyError)
+      // No retornamos error aquí, el upvote ya se registró
+      return { success: true, newUpvoteCount: null }
     }
 
-    // Revalidar las rutas para que se actualicen los datos
-    console.log(`[upvoteStory] Revalidando rutas`)
-    revalidatePath("/")
     revalidatePath(`/story/${storyId}`)
+    revalidatePath("/")
 
-    return {
-      success: true,
-      newUpvoteCount: updatedStory?.upvotes || null,
-    }
+    return { success: true, newUpvoteCount: story.upvotes }
   } catch (error) {
-    console.error("[upvoteStory] Error general:", error)
-    return { success: false, error: "Error al procesar el voto" }
+    console.error("Error al procesar upvote:", error)
+    return { success: false, error: "Error al procesar la solicitud" }
+  }
+}
+
+export async function getStoryById(id: string): Promise<Story | null> {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    const { data, error } = await supabase
+      .from("stories")
+      .select(`
+        *,
+        profiles:author (username, display_name),
+        tags:story_tags (
+          tags:tag_id (
+            id,
+            name,
+            color
+          )
+        )
+      `)
+      .eq("id", id)
+      .single()
+
+    if (error) {
+      console.error("Error al obtener historia:", error)
+      return null
+    }
+
+    // Transformar los datos para que coincidan con el tipo Story
+    const story: Story = {
+      ...data,
+      tags: data.tags.map((tag: any) => tag.tags),
+      author: data.profiles.username,
+      display_name: data.profiles.display_name,
+    }
+
+    return story
+  } catch (error) {
+    console.error("Error al obtener historia:", error)
+    return null
+  }
+}
+
+export async function getStories(): Promise<Story[]> {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    const { data, error } = await supabase
+      .from("stories")
+      .select(`
+        *,
+        profiles:author (username, display_name),
+        tags:story_tags (
+          tags:tag_id (
+            id,
+            name,
+            color
+          )
+        )
+      `)
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error al obtener historias:", error)
+      return []
+    }
+
+    // Transformar los datos para que coincidan con el tipo Story
+    const stories: Story[] = data.map((story: any) => ({
+      ...story,
+      tags: story.tags.map((tag: any) => tag.tags),
+      author: story.profiles.username,
+      display_name: story.profiles.display_name,
+    }))
+
+    return stories
+  } catch (error) {
+    console.error("Error al obtener historias:", error)
+    return []
+  }
+}
+
+export async function searchStories(query: string): Promise<Story[]> {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    const { data, error } = await supabase
+      .from("stories")
+      .select(`
+        *,
+        profiles:author (username, display_name),
+        tags:story_tags (
+          tags:tag_id (
+            id,
+            name,
+            color
+          )
+        )
+      `)
+      .eq("published", true)
+      .or(`title.ilike.%${query}%,content.ilike.%${query}%,industry.ilike.%${query}%`)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error al buscar historias:", error)
+      return []
+    }
+
+    // Transformar los datos para que coincidan con el tipo Story
+    const stories: Story[] = data.map((story: any) => ({
+      ...story,
+      tags: story.tags.map((tag: any) => tag.tags),
+      author: story.profiles.username,
+      display_name: story.profiles.display_name,
+    }))
+
+    return stories
+  } catch (error) {
+    console.error("Error al buscar historias:", error)
+    return []
+  }
+}
+
+export async function getStoriesByTag(tagId: string): Promise<Story[]> {
+  const cookieStore = cookies()
+  const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+  try {
+    const { data, error } = await supabase
+      .from("story_tags")
+      .select(`
+        stories:story_id (
+          *,
+          profiles:author (username, display_name),
+          tags:story_tags (
+            tags:tag_id (
+              id,
+              name,
+              color
+            )
+          )
+        )
+      `)
+      .eq("tag_id", tagId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error al obtener historias por etiqueta:", error)
+      return []
+    }
+
+    // Filtrar historias publicadas y transformar los datos
+    const stories: Story[] = data
+      .map((item: any) => item.stories)
+      .filter((story: any) => story.published)
+      .map((story: any) => ({
+        ...story,
+        tags: story.tags.map((tag: any) => tag.tags),
+        author: story.profiles.username,
+        display_name: story.profiles.display_name,
+      }))
+
+    return stories
+  } catch (error) {
+    console.error("Error al obtener historias por etiqueta:", error)
+    return []
   }
 }
