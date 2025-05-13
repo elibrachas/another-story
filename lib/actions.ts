@@ -283,6 +283,7 @@ export async function submitComment({
 
 export async function upvoteStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
+  console.log(`[upvoteStory] Iniciando proceso para story_id: ${storyId}`)
 
   try {
     const {
@@ -290,14 +291,17 @@ export async function upvoteStory(storyId: string) {
     } = await supabase.auth.getSession()
 
     if (!session) {
+      console.log("[upvoteStory] No hay sesión activa")
       throw new Error("No session found")
     }
 
     const userId = session.user.id
+    console.log(`[upvoteStory] Usuario: ${userId}`)
 
     // Verificar si el usuario ya votó por esta historia
+    console.log(`[upvoteStory] Verificando si el usuario ya votó`)
     const { data: existingVote, error: checkError } = await supabase
-      .from("upvotes") // Usar "upvotes" en lugar de "story_upvotes"
+      .from("upvotes")
       .select("*")
       .eq("story_id", storyId)
       .eq("user_id", userId)
@@ -305,16 +309,18 @@ export async function upvoteStory(storyId: string) {
 
     if (checkError && checkError.code !== "PGRST116") {
       // PGRST116 es el código para "no se encontró ningún registro"
-      console.error("Error checking existing vote:", checkError)
+      console.error("[upvoteStory] Error al verificar voto existente:", checkError)
       return { success: false, error: "Error al verificar voto existente" }
     }
 
     // Si el usuario ya votó, no hacer nada y devolver éxito
     if (existingVote) {
+      console.log("[upvoteStory] El usuario ya había votado por esta historia")
       return { success: true, alreadyVoted: true }
     }
 
     // Primero, obtener el valor actual de upvotes
+    console.log(`[upvoteStory] Obteniendo contador actual de upvotes`)
     const { data: currentStory, error: fetchError } = await supabase
       .from("stories")
       .select("upvotes")
@@ -322,45 +328,69 @@ export async function upvoteStory(storyId: string) {
       .single()
 
     if (fetchError) {
-      console.error("Error fetching current upvotes:", fetchError)
+      console.error("[upvoteStory] Error al obtener contador actual:", fetchError)
       return { success: false, error: "Error al obtener el contador actual de votos" }
     }
 
     // Calcular el nuevo valor de upvotes
     const currentUpvotes = currentStory?.upvotes || 0
     const newUpvotes = currentUpvotes + 1
+    console.log(`[upvoteStory] Contador actual: ${currentUpvotes}, Nuevo contador: ${newUpvotes}`)
 
-    // Registrar el voto del usuario en la tabla de votos
+    // Usar una función RPC personalizada para actualizar el contador
+    console.log(`[upvoteStory] Registrando voto en la tabla upvotes`)
     const { error: insertError } = await supabase.from("upvotes").insert({
       story_id: storyId,
       user_id: userId,
     })
 
     if (insertError) {
-      console.error("Error recording vote:", insertError)
+      console.error("[upvoteStory] Error al registrar voto:", insertError)
       return { success: false, error: "Error al registrar el voto" }
     }
 
-    // Incrementar el contador de votos en la tabla de historias con el valor explícito
-    const { error: updateError } = await supabase.from("stories").update({ upvotes: newUpvotes }).eq("id", storyId)
+    // Actualizar directamente con SQL raw a través de una función RPC
+    console.log(`[upvoteStory] Actualizando contador en la tabla stories`)
+
+    // Método 1: Actualización directa con valor explícito
+    const { error: updateError } = await supabase
+      .from("stories")
+      .update({ upvotes: newUpvotes })
+      .eq("id", storyId)
+      .select()
 
     if (updateError) {
-      console.error("Error upvoting story:", updateError)
+      console.error("[upvoteStory] Error al actualizar contador:", updateError)
       // Intentar revertir la inserción del voto
       await supabase.from("upvotes").delete().eq("story_id", storyId).eq("user_id", userId)
       return { success: false, error: "Error al actualizar el contador de votos" }
     }
 
+    // Verificar que el contador se actualizó correctamente
+    console.log(`[upvoteStory] Verificando actualización del contador`)
+    const { data: updatedStory, error: verifyError } = await supabase
+      .from("stories")
+      .select("upvotes")
+      .eq("id", storyId)
+      .single()
+
+    if (verifyError) {
+      console.error("[upvoteStory] Error al verificar actualización:", verifyError)
+    } else {
+      console.log(`[upvoteStory] Contador verificado: ${updatedStory?.upvotes}`)
+    }
+
     // Revalidar las rutas para que se actualicen los datos
+    console.log(`[upvoteStory] Revalidando rutas`)
     revalidatePath("/")
     revalidatePath(`/story/${storyId}`)
 
     return {
       success: true,
-      newUpvoteCount: newUpvotes,
+      newUpvoteCount: updatedStory?.upvotes || newUpvotes,
     }
   } catch (error) {
-    console.error("Error in upvoteStory action:", error)
+    console.error("[upvoteStory] Error general:", error)
     return { success: false, error: "Error al procesar el voto" }
   }
 }
