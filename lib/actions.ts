@@ -281,7 +281,7 @@ export async function submitComment({
   }
 }
 
-// Implementación actualizada de upvoteStory basada en la implementación funcional de upvoteComment
+// Versión simplificada de upvoteStory que aprovecha el trigger
 export async function upvoteStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
   console.log(`[upvoteStory] Iniciando proceso para story_id: ${storyId}`)
@@ -320,25 +320,7 @@ export async function upvoteStory(storyId: string) {
       return { success: true, alreadyVoted: true }
     }
 
-    // Primero, obtener el valor actual de upvotes
-    console.log(`[upvoteStory] Obteniendo contador actual de upvotes`)
-    const { data: currentStory, error: fetchError } = await supabase
-      .from("stories")
-      .select("upvotes")
-      .eq("id", storyId)
-      .single()
-
-    if (fetchError) {
-      console.error("[upvoteStory] Error al obtener contador actual:", fetchError)
-      return { success: false, error: "Error al obtener el contador actual de votos" }
-    }
-
-    // Calcular el nuevo valor de upvotes
-    const currentUpvotes = currentStory?.upvotes || 0
-    const newUpvotes = currentUpvotes + 1
-    console.log(`[upvoteStory] Contador actual: ${currentUpvotes}, Nuevo contador: ${newUpvotes}`)
-
-    // IMPORTANTE: Primero registrar el voto en la tabla upvotes
+    // Simplemente insertar el voto - el trigger se encargará de actualizar el contador
     console.log(`[upvoteStory] Registrando voto en la tabla upvotes`)
     const { error: insertError } = await supabase.from("upvotes").insert({
       story_id: storyId,
@@ -350,35 +332,18 @@ export async function upvoteStory(storyId: string) {
       return { success: false, error: "Error al registrar el voto" }
     }
 
-    // IMPORTANTE: Usar RPC para actualizar el contador
-    // Esto evita problemas con las políticas RLS
-    console.log(`[upvoteStory] Ejecutando RPC para actualizar contador`)
-    const { data: rpcResult, error: rpcError } = await supabase.rpc("increment_story_upvote_counter", {
-      story_id_param: storyId,
-      increment_by: 1,
-    })
-
-    if (rpcError) {
-      console.error("[upvoteStory] Error al ejecutar RPC:", rpcError)
-      // Intentar revertir la inserción del voto
-      await supabase.from("upvotes").delete().eq("story_id", storyId).eq("user_id", userId)
-      return { success: false, error: "Error al actualizar el contador de votos" }
-    }
-
-    console.log(`[upvoteStory] Resultado RPC:`, rpcResult)
-
-    // Verificar que el contador se actualizó correctamente
-    console.log(`[upvoteStory] Verificando actualización del contador`)
-    const { data: updatedStory, error: verifyError } = await supabase
+    // Obtener el nuevo contador de votos
+    console.log(`[upvoteStory] Obteniendo contador actualizado`)
+    const { data: updatedStory, error: fetchError } = await supabase
       .from("stories")
       .select("upvotes")
       .eq("id", storyId)
       .single()
 
-    if (verifyError) {
-      console.error("[upvoteStory] Error al verificar actualización:", verifyError)
+    if (fetchError) {
+      console.error("[upvoteStory] Error al obtener contador actualizado:", fetchError)
     } else {
-      console.log(`[upvoteStory] Contador verificado: ${updatedStory?.upvotes}`)
+      console.log(`[upvoteStory] Nuevo contador: ${updatedStory?.upvotes}`)
     }
 
     // Revalidar las rutas para que se actualicen los datos
@@ -388,7 +353,7 @@ export async function upvoteStory(storyId: string) {
 
     return {
       success: true,
-      newUpvoteCount: updatedStory?.upvotes || newUpvotes,
+      newUpvoteCount: updatedStory?.upvotes || null,
     }
   } catch (error) {
     console.error("[upvoteStory] Error general:", error)
