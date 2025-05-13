@@ -22,7 +22,11 @@ export function StoryCard({ story }: { story: Story }) {
     <Card className="h-full flex flex-col hover:shadow-md transition-shadow duration-200">
       <CardContent className="flex-grow p-5">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="text-xl font-semibold line-clamp-2">{story.title}</h3>
+          <Link href={`/story/${story.id}`} className="block">
+            <h3 className="text-xl font-semibold line-clamp-2 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+              {story.title}
+            </h3>
+          </Link>
           <UpvoteButton storyId={story.id} initialUpvotes={story.upvotes || 0} />
         </div>
         <p className="text-sm text-muted-foreground mb-4">
