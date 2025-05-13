@@ -37,9 +37,9 @@ export function StoryCard({ story }: { story: Story }) {
       <CardContent className="flex-grow">
         <div className="line-clamp-3 text-sm story-content mb-4">{story.content}</div>
         <div className="flex flex-wrap gap-2 mt-2">
-          {story.tags?.map((tag) => (
-            <TagBadge key={tag} tag={tag} />
-          ))}
+          {story.tags &&
+            story.tags.length > 0 &&
+            story.tags.map((tag) => <TagBadge key={typeof tag === "string" ? tag : tag.id} tag={tag} />)}
         </div>
       </CardContent>
       <CardFooter className="flex justify-between items-center pt-2 border-t">

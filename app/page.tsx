@@ -112,6 +112,7 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+        <p className="text-muted-foreground max-w-2xl">Comparte y descubre historias reales del mundo laboral</p>
       </section>
 
       <OfflineBanner />

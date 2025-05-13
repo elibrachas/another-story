@@ -1,20 +1,26 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import type { Tag } from "@/lib/types"
 
-export function TagBadge({ tag, linkable = true }: { tag: Tag; linkable?: boolean }) {
-  const badge = (
-    <Badge
-      variant="outline"
-      className="bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-300 dark:hover:bg-purple-800"
-    >
-      {tag.name}
-    </Badge>
+type TagBadgeProps = {
+  tag: Tag | string
+  onClick?: () => void
+}
+
+export function TagBadge({ tag, onClick }: TagBadgeProps) {
+  // Si tag es un string, creamos un objeto Tag simple
+  const tagObj = typeof tag === "string" ? { id: tag, name: tag } : tag
+
+  return (
+    <Link href={onClick ? "#" : `/tag/${tagObj.id}`} onClick={onClick}>
+      <Badge
+        variant="outline"
+        className="bg-purple-50 text-purple-800 hover:bg-purple-100 border-purple-200 cursor-pointer dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800"
+      >
+        {tagObj.name}
+      </Badge>
+    </Link>
   )
-
-  if (linkable) {
-    return <Link href={`/tag/${tag.id}`}>{badge}</Link>
-  }
-
-  return badge
 }
