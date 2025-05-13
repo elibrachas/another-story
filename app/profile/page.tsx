@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ProfileForm } from "@/components/auth/profile-form"
+import { ProfileForm } from "@/components/profile-form"
 
 export default async function ProfilePage() {
   const supabase = createServerComponentClient({ cookies })

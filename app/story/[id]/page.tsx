@@ -8,11 +8,11 @@ import { es } from "date-fns/locale"
 import { ArrowLeft, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { UpvoteButton } from "@/components/stories/upvote-button"
-import { CommentList } from "@/components/comments/comment-list"
-import { CommentForm } from "@/components/comments/comment-form"
+import { UpvoteButton } from "@/components/upvote-button"
+import { CommentList } from "@/components/comment-list"
+import { CommentForm } from "@/components/comment-form"
 import { Separator } from "@/components/ui/separator"
-import { TagBadge } from "@/components/stories/tag-badge"
+import { TagBadge } from "@/components/tag-badge"
 import { getStoryByIdClient, getCommentsByStoryIdClient } from "@/lib/supabase-client"
 import type { Story, Comment } from "@/lib/types"
 
@@ -76,10 +76,6 @@ export default function StoryPage({ params }: { params: { id: string } }) {
     return null
   }
 
-  const formatDate = (dateStr: string) => {
-    return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: es })
-  }
-
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Link href="/">
@@ -91,49 +87,38 @@ export default function StoryPage({ params }: { params: { id: string } }) {
 
       <Card className="overflow-hidden border-purple-500/20">
         <CardContent className="p-6 space-y-4">
-          <div className="py-8">
-            <div className="max-w-3xl mx-auto px-4">
-              <h1 className="text-3xl font-bold mb-4">{story.title}</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-                <span>{formatDate(story.created_at)}</span>
-                <span>•</span>
-                <span>{story.display_name || story.author}</span>
-              </div>
-
-              <div className="flex justify-between items-start">
-                <div>
-                  {/*<h1 className="text-2xl font-bold">{story.title}</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Publicado {formatDistanceToNow(new Date(story.created_at), { addSuffix: true, locale: es })}
-                  </p>*/}
-                </div>
-                <UpvoteButton storyId={story.id} initialUpvotes={story.upvotes} />
-              </div>
-
-              {story.tags && story.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {story.tags.map((tag) => (
-                    <TagBadge key={tag.id} tag={tag} />
-                  ))}
-                </div>
-              )}
-
-              <div className="prose prose-invert max-w-none story-content">
-                {story.content.split("\n\n").map((paragraph, i) => (
-                  <p key={i}>{paragraph}</p>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                    {(story.display_name || story.author).charAt(0).toUpperCase()}
-                  </div>
-                  <span className="font-medium">{story.display_name || story.author}</span>
-                </div>
-                <div className="text-sm text-muted-foreground">Industria: {story.industry}</div>
-              </div>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-bold">{story.title}</h1>
+              <p className="text-sm text-muted-foreground">
+                Publicado {formatDistanceToNow(new Date(story.created_at), { addSuffix: true, locale: es })}
+              </p>
             </div>
+            <UpvoteButton storyId={story.id} initialUpvotes={story.upvotes} />
+          </div>
+
+          {story.tags && story.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {story.tags.map((tag) => (
+                <TagBadge key={tag.id} tag={tag} />
+              ))}
+            </div>
+          )}
+
+          <div className="prose prose-invert max-w-none story-content">
+            {story.content.split("\n\n").map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
+                {(story.display_name || story.author).charAt(0).toUpperCase()}
+              </div>
+              <span className="font-medium">{story.display_name || story.author}</span>
+            </div>
+            <div className="text-sm text-muted-foreground">Industria: {story.industry}</div>
           </div>
         </CardContent>
       </Card>

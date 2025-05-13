@@ -1,17 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { StoryCard } from "@/components/stories/story-card"
+import { StoryCard } from "@/components/story-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlusCircle, TagIcon, AlertCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
-import { TagBadge } from "@/components/stories/tag-badge"
+import { TagBadge } from "@/components/tag-badge"
 import { getStoriesClient, getAllTagsClient, clearCache } from "@/lib/supabase-client"
 import type { Story, Tag } from "@/lib/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { OfflineBanner } from "@/components/layout/offline-banner"
+import { OfflineBanner } from "@/components/offline-banner"
 
 export default function Home() {
   const [stories, setStories] = useState<Story[]>([])
@@ -101,7 +101,7 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-8 py-8">
+    <div className="space-y-8">
       <section className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Crónicas Laborales</h1>
@@ -112,7 +112,9 @@ export default function Home() {
             </Button>
           </Link>
         </div>
-        <p className="text-muted-foreground max-w-2xl">Comparte y descubre historias reales del mundo laboral</p>
+        <p className="text-muted-foreground max-w-2xl">
+          Experiencias reales sobre ambientes laborales. Lee, aprende y sabe que no estás solo.
+        </p>
       </section>
 
       <OfflineBanner />

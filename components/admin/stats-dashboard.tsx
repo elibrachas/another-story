@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, Users, BookOpen, MessageSquare, ThumbsUp } from "lucide-react"
-import { getAppStats } from "@/lib/actions/admin"
+import { getAppStats } from "@/lib/actions"
 import { useToast } from "@/components/ui/use-toast"
 
 type Stats = {

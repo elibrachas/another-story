@@ -2,26 +2,22 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { StoryCard } from "@/components/stories/story-card"
+import { StoryCard } from "@/components/story-card"
+import { SearchBar } from "@/components/search-bar"
 import { Button } from "@/components/ui/button"
-import { SearchBar } from "@/components/layout/search-bar"
-import { ArrowLeft, RefreshCw } from "lucide-react"
-import Link from "next/link"
-import { searchStoriesClient } from "@/lib/supabase-client"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Story } from "@/lib/types"
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
   const query = searchParams.get("q") || ""
-
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isRetrying, setIsRetrying] = useState(false)
 
   useEffect(() => {
     async function searchStories() {
-      if (!query.trim()) {
+      if (!query) {
         setStories([])
         setLoading(false)
         return
@@ -31,8 +27,37 @@ export default function SearchPage() {
         setLoading(true)
         setError(null)
 
-        const results = await searchStoriesClient(query)
-        setStories(results)
+        const supabase = createClientComponentClient()
+
+        const { data, error } = await supabase
+          .from("stories")
+          .select(`
+            *,
+            profiles(username),
+            story_tags(
+              tags(id, name)
+            )
+          `)
+          .or(`title.ilike.%${query}%, content.ilike.%${query}%`)
+          .eq("published", true)
+          .order("created_at", { ascending: false })
+
+        if (error) {
+          console.error("Error fetching stories:", error)
+          throw error
+        }
+
+        // Formatear los resultados para que coincidan con la estructura esperada por StoryCard
+        const formattedStories =
+          data?.map((story) => {
+            const tags = story.story_tags?.map((st) => st.tags) || []
+            return {
+              ...story,
+              tags,
+            }
+          }) || []
+
+        setStories(formattedStories)
       } catch (err) {
         console.error("Error al buscar historias:", err)
         setError("Error al buscar historias. Por favor, inténtalo de nuevo más tarde.")
@@ -44,75 +69,48 @@ export default function SearchPage() {
     searchStories()
   }, [query])
 
-  const handleRetry = async () => {
-    setIsRetrying(true)
-    try {
-      setError(null)
-      const results = await searchStoriesClient(query)
-      setStories(results)
-    } catch (err) {
-      console.error("Error al reintentar búsqueda:", err)
-      setError("Error al buscar historias. Por favor, inténtalo de nuevo más tarde.")
-    } finally {
-      setIsRetrying(false)
-    }
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="mt-4 text-muted-foreground">Buscando historias...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold mb-4">Error al buscar</h2>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
+          Reintentar
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Resultados de búsqueda</h1>
+    <div className="space-y-8">
+      <h1 className="text-3xl font-bold mb-6">Resultados de búsqueda: {query}</h1>
+
+      <div className="mb-8">
+        <SearchBar />
       </div>
 
-      <div className="max-w-xl">
-        <SearchBar defaultValue={query} />
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-4 text-muted-foreground">Buscando historias...</p>
-        </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={handleRetry} variant="outline" disabled={isRetrying}>
-            {isRetrying ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Reintentando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reintentar
-              </>
-            )}
-          </Button>
-        </div>
-      ) : stories.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">
-            {query.trim() ? `No se encontraron historias para "${query}"` : "Ingresa un término para buscar"}
-          </p>
+      {stories.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {stories.map((story) => (
+            <StoryCard key={story.id} story={story} />
+          ))}
         </div>
       ) : (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Se encontraron {stories.length} {stories.length === 1 ? "historia" : "historias"} para "{query}"
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-semibold mb-2">No se encontraron resultados</h2>
+          <p className="text-muted-foreground">
+            No hay historias que coincidan con "{query}". Intenta con otros términos.
           </p>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {stories.map((story) => (
-              <StoryCard key={story.id} story={story} />
-            ))}
-          </div>
-        </>
+        </div>
       )}
     </div>
   )

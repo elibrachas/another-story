@@ -1,8 +1,0 @@
-export { default } from "./header"
-export { default as Footer } from "./footer"
-export { default as Navbar } from "./navbar"
-export { default as SearchBar } from "./search-bar"
-export { default as CookieConsent } from "./cookie-consent"
-export { default as OfflineBanner } from "./offline-banner"
-export { default as ConnectionError } from "./connection-error"
-export { ModeToggle } from "./mode-toggle"

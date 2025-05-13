@@ -3,13 +3,13 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ModeToggle } from "@/components/layout/mode-toggle"
-import { LoginDialog } from "@/components/auth/login-dialog"
+import { ModeToggle } from "@/components/mode-toggle"
+import { LoginDialog } from "@/components/login-dialog"
 import { useState, useEffect } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Shield } from "lucide-react"
 import { useSupabase } from "@/lib/supabase-provider"
-import { SearchBar } from "@/components/layout/search-bar"
+import { SearchBar } from "@/components/search-bar"
 import { useTheme } from "next-themes"
 
 export default function Header() {
@@ -50,7 +50,7 @@ export default function Header() {
 
   return (
     <header className="border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/images/logo_cronicas.png"
@@ -134,7 +134,7 @@ export default function Header() {
         </div>
       </div>
       <div className="md:hidden border-t py-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto px-4">
           <SearchBar />
         </div>
       </div>

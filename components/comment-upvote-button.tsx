@@ -3,20 +3,22 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp } from "lucide-react"
-import { LoginDialog } from "@/components/auth/login-dialog"
-import { upvoteComment } from "@/lib/actions/comments"
+import { LoginDialog } from "@/components/login-dialog"
+import { upvoteComment } from "@/lib/actions"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
 
 export function CommentUpvoteButton({
   commentId,
   initialUpvotes,
+  storyId,
 }: {
   commentId: string
   initialUpvotes: number
+  storyId: string
 }) {
   const [upvotes, setUpvotes] = useState(initialUpvotes)
-  const [isLoading, setIsLoading] = useState(false)
+  const [hasUpvoted, setHasUpvoted] = useState(false)
   const [showLoginDialog, setShowLoginDialog] = useState(false)
   const { session } = useSupabase()
   const { toast } = useToast()
@@ -27,46 +29,31 @@ export function CommentUpvoteButton({
       return
     }
 
-    if (isLoading) return
+    if (hasUpvoted) return
 
     try {
-      setIsLoading(true)
-
-      // Actualización optimista de la UI
+      await upvoteComment(commentId, storyId)
       setUpvotes((prev) => prev + 1)
-
-      // Enviar al servidor
-      const result = await upvoteComment(commentId)
-
-      if (!result.success) {
-        // Revertir cambios si hay error
-        setUpvotes((prev) => prev - 1)
-
-        toast({
-          title: "Error",
-          description: result.error || "Error al votar por el comentario",
-          variant: "destructive",
-        })
-      }
+      setHasUpvoted(true)
     } catch (error) {
-      // Revertir cambios si hay error
-      setUpvotes((prev) => prev - 1)
-
       toast({
         title: "Error",
         description: "Error al votar por el comentario",
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={handleUpvote} disabled={isLoading} className="h-auto p-1">
-        <ThumbsUp className={`h-3 w-3 mr-1 ${isLoading ? "animate-pulse" : ""}`} />
-        <span className="text-xs">{upvotes}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleUpvote}
+        className={`gap-1 ${hasUpvoted ? "text-purple-500" : ""}`}
+      >
+        <ThumbsUp className="h-4 w-4" />
+        <span>{upvotes}</span>
       </Button>
 
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />

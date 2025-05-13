@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Check, X, Eye, Edit } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
-import { adminApproveStory, adminRejectStory } from "@/lib/actions/admin"
+import { adminRejectStory } from "@/lib/actions"
 import type { Story } from "@/lib/types"
 
 export function PendingStories({ stories }: { stories: Story[] }) {
@@ -20,15 +20,23 @@ export function PendingStories({ stories }: { stories: Story[] }) {
       console.log(`Iniciando aprobación para historia ID: ${storyId}`)
 
       // Usar el endpoint de API que funciona correctamente
-      const response = await adminApproveStory(storyId)
+      const response = await fetch("/api/admin/approve-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storyId }),
+      })
 
-      if (!response.success) {
-        const errorMessage = response.error || `Error`
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        const errorMessage = result.error || `Error ${response.status}`
         console.error("Error en API Route:", errorMessage)
         throw new Error(errorMessage)
       }
 
-      console.log("Aprobación exitosa mediante API Route:", response)
+      console.log("Aprobación exitosa mediante API Route:", result)
 
       setPendingStories((prev) => prev.filter((story) => story.id !== storyId))
       toast({

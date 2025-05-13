@@ -1,7 +1,7 @@
 import type { Comment } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
-import { CommentUpvoteButton } from "@/components/comments/comment-upvote-button"
+import { CommentUpvoteButton } from "./comment-upvote-button"
 
 export function CommentList({ comments, storyId }: { comments: Comment[]; storyId: string }) {
   if (comments.length === 0) {

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Wand2, Save, ArrowLeft, Check, Search } from "lucide-react"
-import { improveStoryWithAI } from "@/lib/actions/admin"
+import { improveStoryWithAI } from "@/lib/actions"
 import type { Story, Tag } from "@/lib/types"
 import {
   Dialog,
