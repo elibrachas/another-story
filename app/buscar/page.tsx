@@ -32,12 +32,11 @@ export default function SearchPage() {
         const { data, error } = await supabase
           .from("stories")
           .select(`
-            *,
-            profiles(username),
-            story_tags(
-              tags(id, name)
-            )
-          `)
+    *,
+    story_tags(
+      tags(id, name)
+    )
+  `)
           .or(`title.ilike.%${query}%, content.ilike.%${query}%`)
           .eq("published", true)
           .order("created_at", { ascending: false })
