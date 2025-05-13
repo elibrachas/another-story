@@ -3,13 +3,13 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ModeToggle } from "@/components/mode-toggle"
-import { LoginDialog } from "@/components/login-dialog"
+import { ModeToggle } from "@/components/layout/mode-toggle"
+import { LoginDialog } from "@/components/auth/login-dialog"
 import { useState, useEffect } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Shield } from "lucide-react"
 import { useSupabase } from "@/lib/supabase-provider"
-import { SearchBar } from "@/components/search-bar"
+import { SearchBar } from "@/components/layout/search-bar"
 import { useTheme } from "next-themes"
 
 export default function Header() {

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Trash2, Eye } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
-import { adminDeleteComment } from "@/lib/actions"
+import { adminDeleteComment } from "@/lib/actions/admin"
 import type { Comment } from "@/lib/types"
 
 export function AdminCommentsList({ comments }: { comments: (Comment & { story_title: string; story_id: string })[] }) {

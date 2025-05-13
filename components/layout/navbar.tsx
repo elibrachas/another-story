@@ -2,7 +2,7 @@ import Link from "next/link"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { Button } from "@/components/ui/button"
-import { SearchBar } from "@/components/search-bar"
+import { SearchBar } from "@/components/layout/search-bar"
 import { UserNav } from "@/components/user-nav"
 
 export async function Navbar() {

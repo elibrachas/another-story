@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { LoginDialog } from "@/components/login-dialog"
-import { submitComment } from "@/lib/actions"
+import { submitComment } from "@/lib/actions/comments"
 import { useSupabase } from "@/lib/supabase-provider"
 
 export function CommentForm({ storyId }: { storyId: string }) {

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AuthForm } from "@/components/auth-form"
+import { AuthForm } from "@/components/auth/auth-form"
 
 export default function AuthPage() {
   return (

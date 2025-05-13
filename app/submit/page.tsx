@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { SubmitForm } from "@/components/submit-form"
+import { SubmitForm } from "@/components/stories/submit-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAllTagsClient } from "@/lib/supabase-client"
 import type { Tag } from "@/lib/types"

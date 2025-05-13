@@ -4,8 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
-import { UpvoteButton } from "@/components/upvote-button"
-import { TagBadge } from "@/components/tag-badge"
+import { UpvoteButton } from "@/components/stories/upvote-button"
+import { TagBadge } from "@/components/stories/tag-badge"
 import type { Story } from "@/lib/types"
 
 export function StoryCard({ story }: { story: Story }) {

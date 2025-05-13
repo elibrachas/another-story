@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp } from "lucide-react"
 import { LoginDialog } from "@/components/login-dialog"
-import { upvoteComment } from "@/lib/actions"
+import { upvoteComment } from "@/lib/actions/comments"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
 
