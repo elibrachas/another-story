@@ -281,6 +281,7 @@ export async function submitComment({
   }
 }
 
+// Implementación actualizada de upvoteStory basada en la implementación funcional de upvoteComment
 export async function upvoteStory(storyId: string) {
   const supabase = createServerActionClient({ cookies })
   console.log(`[upvoteStory] Iniciando proceso para story_id: ${storyId}`)
@@ -337,7 +338,7 @@ export async function upvoteStory(storyId: string) {
     const newUpvotes = currentUpvotes + 1
     console.log(`[upvoteStory] Contador actual: ${currentUpvotes}, Nuevo contador: ${newUpvotes}`)
 
-    // Usar una función RPC personalizada para actualizar el contador
+    // IMPORTANTE: Primero registrar el voto en la tabla upvotes
     console.log(`[upvoteStory] Registrando voto en la tabla upvotes`)
     const { error: insertError } = await supabase.from("upvotes").insert({
       story_id: storyId,
@@ -349,22 +350,22 @@ export async function upvoteStory(storyId: string) {
       return { success: false, error: "Error al registrar el voto" }
     }
 
-    // Actualizar directamente con SQL raw a través de una función RPC
-    console.log(`[upvoteStory] Actualizando contador en la tabla stories`)
+    // IMPORTANTE: Usar RPC para actualizar el contador
+    // Esto evita problemas con las políticas RLS
+    console.log(`[upvoteStory] Ejecutando RPC para actualizar contador`)
+    const { data: rpcResult, error: rpcError } = await supabase.rpc("increment_story_upvote_counter", {
+      story_id_param: storyId,
+      increment_by: 1,
+    })
 
-    // Método 1: Actualización directa con valor explícito
-    const { error: updateError } = await supabase
-      .from("stories")
-      .update({ upvotes: newUpvotes })
-      .eq("id", storyId)
-      .select()
-
-    if (updateError) {
-      console.error("[upvoteStory] Error al actualizar contador:", updateError)
+    if (rpcError) {
+      console.error("[upvoteStory] Error al ejecutar RPC:", rpcError)
       // Intentar revertir la inserción del voto
       await supabase.from("upvotes").delete().eq("story_id", storyId).eq("user_id", userId)
       return { success: false, error: "Error al actualizar el contador de votos" }
     }
+
+    console.log(`[upvoteStory] Resultado RPC:`, rpcResult)
 
     // Verificar que el contador se actualizó correctamente
     console.log(`[upvoteStory] Verificando actualización del contador`)
@@ -395,6 +396,7 @@ export async function upvoteStory(storyId: string) {
   }
 }
 
+// Función upvoteComment que sabemos que funciona
 export async function upvoteComment(commentId: string, storyId: string) {
   const supabase = createServerActionClient({ cookies })
 
