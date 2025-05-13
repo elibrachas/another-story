@@ -1,30 +1,54 @@
--- Crear una tabla para solicitudes de aprobación
-CREATE TABLE IF NOT EXISTS admin_actions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  action_type TEXT NOT NULL,
-  target_id UUID NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  processed_at TIMESTAMPTZ,
-  admin_id UUID NOT NULL,
-  result TEXT,
-  error TEXT
-);
+-- Funciones administrativas consolidadas
 
--- Crear una política para permitir a los administradores insertar acciones
-ALTER TABLE admin_actions ENABLE ROW LEVEL SECURITY;
+-- Función para aprobar una historia
+CREATE OR REPLACE FUNCTION approve_story(story_id UUID) 
+RETURNS BOOLEAN AS $$
+DECLARE
+  success BOOLEAN;
+BEGIN
+  UPDATE stories
+  SET published = TRUE
+  WHERE id = story_id;
+  
+  GET DIAGNOSTICS success = ROW_COUNT;
+  RETURN success > 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE POLICY admin_actions_insert ON admin_actions
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
+-- Función para rechazar una historia
+CREATE OR REPLACE FUNCTION reject_story(story_id UUID) 
+RETURNS BOOLEAN AS $$
+DECLARE
+  success BOOLEAN;
+BEGIN
+  DELETE FROM stories
+  WHERE id = story_id;
+  
+  GET DIAGNOSTICS success = ROW_COUNT;
+  RETURN success > 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE POLICY admin_actions_select ON admin_actions
-  FOR SELECT
-  TO authenticated
-  USING (true);
+-- Función para obtener historias pendientes
+CREATE OR REPLACE FUNCTION get_pending_stories() 
+RETURNS TABLE (
+  id UUID,
+  title TEXT,
+  content TEXT,
+  author TEXT,
+  industry TEXT,
+  created_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT s.id, s.title, s.content, s.author, s.industry, s.created_at
+  FROM stories s
+  WHERE s.published = FALSE
+  ORDER BY s.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
 
--- Crear una función para procesar las solicitudes de aprobación
+-- Función para procesar solicitudes de aprobación
 CREATE OR REPLACE FUNCTION process_story_approval(action_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -69,7 +93,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Crear una función para verificar el estado de una historia
+-- Función para verificar el estado de aprobación
 CREATE OR REPLACE FUNCTION check_story_approval_status(story_id UUID)
 RETURNS TABLE (
   id UUID,
@@ -98,32 +122,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Crear una función para obtener todas las historias pendientes
-CREATE OR REPLACE FUNCTION get_pending_stories()
+-- Función para contar etiquetas
+CREATE OR REPLACE FUNCTION count_stories_by_tag()
 RETURNS TABLE (
-  id UUID,
-  title TEXT,
-  content TEXT,
-  author TEXT,
-  industry TEXT,
-  created_at TIMESTAMPTZ,
-  pending_approval BOOLEAN
+  tag_id UUID,
+  tag_name TEXT,
+  story_count BIGINT
 ) AS $$
 BEGIN
   RETURN QUERY
   SELECT 
-    s.id,
-    s.title,
-    s.content,
-    s.author,
-    s.industry,
-    s.created_at,
-    EXISTS (
-      SELECT 1 FROM admin_actions 
-      WHERE target_id = s.id AND action_type = 'approve_story' AND status = 'pending'
-    ) AS pending_approval
-  FROM stories s
-  WHERE s.published = FALSE
-  ORDER BY s.created_at DESC;
+    t.id AS tag_id,
+    t.name AS tag_name,
+    COUNT(st.story_id) AS story_count
+  FROM 
+    tags t
+  LEFT JOIN 
+    story_tags st ON t.id = st.tag_id
+  LEFT JOIN 
+    stories s ON st.story_id = s.id AND s.published = true
+  GROUP BY 
+    t.id, t.name
+  ORDER BY 
+    story_count DESC, t.name;
 END;
 $$ LANGUAGE plpgsql;
