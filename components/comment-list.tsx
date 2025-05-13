@@ -1,9 +1,41 @@
-import type { Comment } from "@/lib/types"
+"use client"
+
+import { useState, useEffect } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 import { CommentUpvoteButton } from "./comment-upvote-button"
+import { getCommentsByStoryIdClient } from "@/lib/supabase-client"
+import type { Comment } from "@/lib/types"
 
-export function CommentList({ comments, storyId }: { comments: Comment[]; storyId: string }) {
+export function CommentList({ storyId }: { storyId: string }) {
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadComments() {
+      try {
+        setLoading(true)
+        const commentsData = await getCommentsByStoryIdClient(storyId)
+        setComments(commentsData)
+      } catch (error) {
+        console.error("Error loading comments:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadComments()
+  }, [storyId])
+
+  if (loading) {
+    return (
+      <div className="text-center py-4">
+        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="mt-2 text-sm text-muted-foreground">Cargando comentarios...</p>
+      </div>
+    )
+  }
+
   if (comments.length === 0) {
     return (
       <div className="text-center py-6">
@@ -19,10 +51,10 @@ export function CommentList({ comments, storyId }: { comments: Comment[]; storyI
           <div className="flex justify-between">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                {(comment.display_name || comment.author).charAt(0).toUpperCase()}
+                {(comment.display_name || comment.author || "Anónimo").charAt(0).toUpperCase()}
               </div>
               <div>
-                <div className="font-medium">{comment.display_name || comment.author}</div>
+                <div className="font-medium">{comment.display_name || comment.author || "Anónimo"}</div>
                 <div className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
                 </div>

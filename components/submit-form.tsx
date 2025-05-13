@@ -36,7 +36,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [industry, setIndustry] = useState("")
-  const [isAnonymous, setIsAnonymous] = useState(true)
+  const [isAnonymous, setIsAnonymous] = useState(false) // Cambiado a false por defecto
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [customTags, setCustomTags] = useState<string[]>([])
   const [newTagInput, setNewTagInput] = useState("")
@@ -225,8 +225,8 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Protege tu privacidad</AlertTitle>
         <AlertDescription>
-          Para proteger tu identidad, te recomendamos enviar tu historia de forma anónima y evitar incluir detalles que
-          puedan identificarte a ti o a tu lugar de trabajo.
+          Para proteger tu identidad, te recomendamos evitar incluir detalles que puedan identificarte a ti o a tu lugar
+          de trabajo.
         </AlertDescription>
       </Alert>
 
@@ -388,7 +388,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
             onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
           />
           <Label htmlFor="anonymous" className="font-normal">
-            Enviar anónimamente (recomendado)
+            Enviar anónimamente
           </Label>
         </div>
 

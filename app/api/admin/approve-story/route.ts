@@ -1,26 +1,27 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase-admin"
+import { isAdmin } from "@/lib/auth-utils"
 
 export async function POST(request: Request) {
   try {
     // Verificar autenticación y permisos de administrador usando el cliente normal
     const supabase = createRouteHandlerClient({ cookies })
 
+    // Verificar si el usuario está autenticado
     const { data: userData, error: userError } = await supabase.auth.getUser()
     if (userError || !userData.user) {
       return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 })
     }
 
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("admin")
-      .eq("id", userData.user.id)
-      .single()
-
-    if (profileError || !profileData?.admin) {
-      return NextResponse.json({ success: false, error: "No tienes permisos de administrador" }, { status: 403 })
+    // Verificar si el usuario es administrador usando nuestra nueva función de utilidad
+    const adminCheckResult = await isAdmin(supabase, userData.user.id)
+    if (!adminCheckResult.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: adminCheckResult.error || "No tienes permisos de administrador" },
+        { status: 403 },
+      )
     }
 
     // Obtener el ID de la historia del cuerpo de la solicitud
@@ -30,11 +31,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "ID de historia no proporcionado" }, { status: 400 })
     }
 
-    // Crear un cliente con la clave de servicio para eludir las políticas RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-      process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-    )
+    // Crear un cliente con la clave de servicio usando nuestra función segura
+    const supabaseAdmin = createAdminClient()
 
     // Intentar primero con la función RPC
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc("admin_force_publish_story", {

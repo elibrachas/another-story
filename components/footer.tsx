@@ -6,13 +6,14 @@ export function Footer() {
     <footer className="border-t py-6 md:py-8">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="mb-4 md:mb-0">
+          <div className="mb-4 md:mb-0 text-center md:text-left">
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} Crónicas Laborales. Todos los derechos reservados.
             </p>
           </div>
 
-          <div className="flex space-x-6">
+          {/* Links apilados en móvil, en línea en desktop */}
+          <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-6 items-center md:items-start">
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               Historias
             </Link>
@@ -30,7 +31,8 @@ export function Footer() {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* Iconos de redes sociales */}
+          <div className="flex items-center space-x-4 mt-4 md:mt-0">
             <a
               href="https://www.tiktok.com/@elibrachas"
               target="_blank"

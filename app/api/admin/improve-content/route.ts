@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { verifyAdminAccess } from "@/lib/auth-utils"
 import OpenAI from "openai"
 
 const openai = new OpenAI({
@@ -12,39 +13,19 @@ export async function POST(request: Request) {
     // Verificar autenticación y permisos de administrador
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const accessCheck = await verifyAdminAccess(supabase)
 
-    // Obtener la sesión actual
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !sessionData.session) {
-      console.error("Error de sesión:", sessionError || "No hay sesión activa")
-      return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 })
+    if (!accessCheck.authorized) {
+      return NextResponse.json(
+        { success: false, error: accessCheck.error },
+        { status: accessCheck.error === "No autenticado" ? 401 : 403 },
+      )
     }
 
-    // Obtener datos del usuario
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-    if (userError || !userData.user) {
-      console.error("Error al obtener usuario:", userError)
-      return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 })
-    }
-
-    console.log("Usuario autenticado:", userData.user.id)
-
-    // Verificar si el usuario es administrador
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("admin")
-      .eq("id", userData.user.id)
-      .single()
-
-    if (profileError) {
-      console.error("Error al verificar perfil:", profileError)
-      return NextResponse.json({ success: false, error: "Error al verificar permisos" }, { status: 500 })
-    }
-
-    if (!profileData?.admin) {
-      console.error("Usuario no es administrador:", userData.user.id)
-      return NextResponse.json({ success: false, error: "No tienes permisos de administrador" }, { status: 403 })
+    // Verificar que la API key de OpenAI esté configurada
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("API key de OpenAI no configurada")
+      return NextResponse.json({ success: false, error: "Configuración incompleta del servidor" }, { status: 500 })
     }
 
     // Obtener el contenido del cuerpo de la solicitud

@@ -1,28 +1,20 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase-admin"
+import { verifyAdminAccess } from "@/lib/auth-utils"
 
 export async function POST(request: Request) {
   try {
-    // Verificar autenticación y permisos de administrador usando el cliente normal
+    // Verificar autenticación y permisos de administrador
     const supabase = createRouteHandlerClient({ cookies })
+    const accessCheck = await verifyAdminAccess(supabase)
 
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-    if (userError || !userData.user) {
-      console.error("Error de autenticación:", userError)
-      return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 })
-    }
-
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("admin")
-      .eq("id", userData.user.id)
-      .single()
-
-    if (profileError || !profileData?.admin) {
-      console.error("Error de permisos:", profileError)
-      return NextResponse.json({ success: false, error: "No tienes permisos de administrador" }, { status: 403 })
+    if (!accessCheck.authorized) {
+      return NextResponse.json(
+        { success: false, error: accessCheck.error },
+        { status: accessCheck.error === "No autenticado" ? 401 : 403 },
+      )
     }
 
     // Obtener los datos del cuerpo de la solicitud
@@ -39,11 +31,8 @@ export async function POST(request: Request) {
 
     console.log(`Actualizando estado de historia ${storyId} a ${action}`)
 
-    // Crear un cliente con la clave de servicio para eludir las políticas RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-      process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-    )
+    // Crear un cliente con la clave de servicio usando nuestra función segura
+    const supabaseAdmin = createAdminClient()
 
     // Actualizar el estado de la historia
     const { data, error } = await supabaseAdmin
