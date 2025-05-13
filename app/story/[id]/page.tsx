@@ -9,6 +9,7 @@ import { TagBadge } from "@/components/tag-badge"
 import { Separator } from "@/components/ui/separator"
 import { UpvoteButton } from "@/components/upvote-button"
 import { ConnectionError } from "@/components/connection-error"
+import { sanitizeHtml, sanitizeText } from "@/lib/sanitize"
 
 export const dynamic = "force-dynamic"
 
@@ -44,14 +45,22 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
         }))
       : []
 
+    // Sanitizar el contenido
+    const safeTitle = sanitizeText(story.title)
+    const safeAuthorName = sanitizeText(story.display_name || story.author || "Anónimo")
+    const safeIndustry = sanitizeText(story.industry)
+
+    // Sanitizar y formatear el contenido
+    const contentParagraphs = story.content.split("\n\n").map((paragraph: string) => sanitizeHtml(paragraph))
+
     return (
       <div className="container max-w-4xl py-6 space-y-8">
         <article className="prose prose-purple dark:prose-invert max-w-none">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">{story.title}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">{safeTitle}</h1>
 
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-6">
             <span>
-              Por: {story.display_name || story.author || "Anónimo"} • Industria: {story.industry}
+              Por: {safeAuthorName} • Industria: {safeIndustry}
             </span>
             <span>•</span>
             <span>{formatDistanceToNow(new Date(story.created_at), { addSuffix: true, locale: es })}</span>
@@ -65,7 +74,11 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
             </div>
           )}
 
-          <div className="whitespace-pre-line">{story.content}</div>
+          <div className="whitespace-pre-line">
+            {contentParagraphs.map((paragraph, index) => (
+              <p key={index}>{paragraph}</p>
+            ))}
+          </div>
 
           {/* Botón de upvote movido al final de la historia */}
           <div className="flex justify-end mt-8">

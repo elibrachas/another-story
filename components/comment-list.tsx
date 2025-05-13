@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 import { CommentUpvoteButton } from "./comment-upvote-button"
 import { getCommentsByStoryIdClient } from "@/lib/supabase-client"
+import { sanitizeText } from "@/lib/sanitize"
 import type { Comment } from "@/lib/types"
 
 export function CommentList({ storyId }: { storyId: string }) {
@@ -46,25 +47,32 @@ export function CommentList({ storyId }: { storyId: string }) {
 
   return (
     <div className="space-y-4">
-      {comments.map((comment) => (
-        <div key={comment.id} className="border rounded-lg p-4">
-          <div className="flex justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                {(comment.display_name || comment.author || "Anónimo").charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="font-medium">{comment.display_name || comment.author || "Anónimo"}</div>
-                <div className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
+      {comments.map((comment) => {
+        // Sanitizar el contenido del comentario
+        const safeContent = sanitizeText(comment.content)
+        // Sanitizar el nombre del autor
+        const safeAuthorName = sanitizeText(comment.display_name || comment.author || "Anónimo")
+
+        return (
+          <div key={comment.id} className="border rounded-lg p-4">
+            <div className="flex justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
+                  {safeAuthorName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="font-medium">{safeAuthorName}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
+                  </div>
                 </div>
               </div>
+              <CommentUpvoteButton commentId={comment.id} initialUpvotes={comment.upvotes} storyId={storyId} />
             </div>
-            <CommentUpvoteButton commentId={comment.id} initialUpvotes={comment.upvotes} storyId={storyId} />
+            <div className="mt-2">{safeContent}</div>
           </div>
-          <div className="mt-2">{comment.content}</div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
