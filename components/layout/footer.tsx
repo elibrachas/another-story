@@ -4,7 +4,7 @@ import { Instagram, Linkedin, Youtube } from "lucide-react"
 export function Footer() {
   return (
     <footer className="border-t py-6 md:py-8">
-      <div className="container mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="mb-4 md:mb-0">
             <p className="text-sm text-muted-foreground">
@@ -12,7 +12,7 @@ export function Footer() {
             </p>
           </div>
 
-          <div className="flex space-x-6">
+          <div className="flex flex-wrap justify-center gap-4 md:space-x-6">
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               Historias
             </Link>

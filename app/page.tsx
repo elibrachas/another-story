@@ -101,7 +101,7 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 py-8">
       <section className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Crónicas Laborales</h1>
@@ -112,9 +112,6 @@ export default function Home() {
             </Button>
           </Link>
         </div>
-        <p className="text-muted-foreground max-w-2xl">
-          Experiencias reales sobre ambientes laborales. Lee, aprende y sabe que no estás solo.
-        </p>
       </section>
 
       <OfflineBanner />
