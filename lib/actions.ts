@@ -10,52 +10,66 @@ export async function createInitialProfile() {
   const supabase = createServerActionClient({ cookies })
 
   try {
+    console.log("Iniciando createInitialProfile...")
+
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
     if (!session) {
-      throw new Error("No session found")
+      console.log("No hay sesión activa")
+      return { success: false, error: "No session found" }
     }
 
     const userId = session.user.id
+    console.log("Usuario autenticado:", userId)
 
     // Verificar si ya existe un perfil para este usuario
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, username")
       .eq("id", userId)
-      .single()
+      .maybeSingle()
 
-    if (existingProfileError && existingProfileError.status !== 406) {
-      // 406 significa que no se encontró el perfil, lo cual es esperado en el primer inicio de sesión
+    console.log("Resultado de verificación de perfil:", { existingProfile, existingProfileError })
+
+    if (existingProfileError && existingProfileError.code !== "PGRST116") {
       console.error("Error al verificar perfil existente:", existingProfileError)
       return { success: false, error: existingProfileError.message }
     }
 
     if (existingProfile) {
-      // El perfil ya existe, no es necesario hacer nada
-      return { success: true }
+      console.log("El perfil ya existe:", existingProfile)
+      return { success: true, message: "Profile already exists" }
     }
 
     // Generar un nombre de usuario único
+    console.log("Generando nombre de usuario único...")
     const username = await generateUniqueUsername(supabase)
+    console.log("Nombre de usuario generado:", username)
 
     // Crear el perfil inicial
-    const { error } = await supabase.from("profiles").insert({
-      id: userId,
-      username: username,
-    })
+    console.log("Creando perfil inicial...")
+    const { data: newProfile, error } = await supabase
+      .from("profiles")
+      .insert({
+        id: userId,
+        username: username,
+        admin: false,
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error("Error al crear perfil inicial:", error)
       return { success: false, error: error.message }
     }
 
-    return { success: true }
+    console.log("Perfil creado exitosamente:", newProfile)
+    return { success: true, profile: newProfile }
   } catch (error) {
-    console.error("Error in createInitialProfile action:", error)
-    return { success: false, error: "Failed to create initial profile" }
+    console.error("Error en createInitialProfile:", error)
+    return { success: false, error: error instanceof Error ? error.message : "Error desconocido" }
   }
 }
 

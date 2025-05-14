@@ -17,6 +17,7 @@ import Link from "next/link"
 export function AuthForm() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false)
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
@@ -25,21 +26,56 @@ export function AuthForm() {
   useEffect(() => {
     const checkAndCreateProfile = async () => {
       try {
+        setIsCreatingProfile(true)
         const { data } = await supabase.auth.getSession()
+
         if (data.session) {
-          console.log("Usuario autenticado, creando perfil inicial si es necesario...")
-          const result = await createInitialProfile()
-          if (!result.success) {
-            console.error("Error al crear perfil inicial:", result.error)
+          console.log("Usuario autenticado, creando perfil inicial...")
+
+          // Intentar crear el perfil varias veces si es necesario
+          let attempts = 0
+          let success = false
+
+          while (attempts < 3 && !success) {
+            attempts++
+            console.log(`Intento ${attempts} de crear perfil...`)
+
+            const result = await createInitialProfile()
+
+            if (result.success) {
+              console.log("Perfil creado exitosamente")
+              success = true
+              break
+            } else {
+              console.error(`Error en intento ${attempts}:`, result.error)
+              // Esperar un poco antes de reintentar
+              await new Promise((resolve) => setTimeout(resolve, 1000))
+            }
+          }
+
+          if (!success) {
+            console.error("No se pudo crear el perfil después de varios intentos")
+            toast({
+              title: "Error",
+              description: "No se pudo crear tu perfil. Por favor, intenta recargar la página.",
+              variant: "destructive",
+            })
           }
         }
       } catch (error) {
         console.error("Error al verificar sesión o crear perfil:", error)
+        toast({
+          title: "Error",
+          description: "Hubo un problema al configurar tu perfil.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsCreatingProfile(false)
       }
     }
 
     checkAndCreateProfile()
-  }, [supabase])
+  }, [supabase, toast])
 
   const handleGoogleSignIn = async () => {
     try {
@@ -94,6 +130,13 @@ export function AuthForm() {
 
   return (
     <div className="flex flex-col gap-6">
+      {isCreatingProfile && (
+        <Alert>
+          <AlertTitle>Configurando tu perfil...</AlertTitle>
+          <AlertDescription>Estamos configurando tu perfil anónimo. Por favor, espera un momento.</AlertDescription>
+        </Alert>
+      )}
+
       <Alert variant="warning">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Importante: Protege tu privacidad</AlertTitle>
@@ -103,7 +146,12 @@ export function AuthForm() {
         </AlertDescription>
       </Alert>
 
-      <Button variant="outline" onClick={handleGoogleSignIn} disabled={isLoading} className="w-full">
+      <Button
+        variant="outline"
+        onClick={handleGoogleSignIn}
+        disabled={isLoading || isCreatingProfile}
+        className="w-full"
+      >
         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
           <path
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -147,7 +195,11 @@ export function AuthForm() {
             required
           />
         </div>
-        <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full bg-purple-600 hover:bg-purple-700"
+          disabled={isLoading || isCreatingProfile}
+        >
           {isLoading ? "Enviando..." : "Enviar enlace mágico"}
         </Button>
       </form>
