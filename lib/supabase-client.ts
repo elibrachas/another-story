@@ -3,13 +3,25 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Story, Comment, Tag } from "./types"
 
-// Singleton pattern para el cliente de Supabase
+// Singleton pattern para el cliente de Supabase con manejo de errores mejorado
 let supabaseClient: ReturnType<typeof createClientComponentClient> | null = null
 
 // Cliente de Supabase para componentes del cliente
 const createClient = () => {
   if (!supabaseClient) {
     supabaseClient = createClientComponentClient()
+
+    // Configurar manejo de errores global para el cliente
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED") {
+        console.log("Token refrescado exitosamente en cliente singleton")
+      }
+
+      if (event === "SIGNED_OUT") {
+        // Limpiar caché al cerrar sesión
+        clearCache()
+      }
+    })
   }
   return supabaseClient
 }

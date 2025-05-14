@@ -12,6 +12,7 @@ type AuthContextType = {
   signIn: (provider: "google") => Promise<void>
   signInWithMagicLink: (email: string) => Promise<void>
   signOut: () => Promise<void>
+  refreshSession: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -21,17 +22,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
 
+  // Función para refrescar la sesión manualmente
+  const refreshSession = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        console.error("Error al refrescar la sesión:", error)
+        return false
+      }
+      setUser(data.session?.user || null)
+      return true
+    } catch (error) {
+      console.error("Error inesperado al refrescar la sesión:", error)
+      return false
+    }
+  }
+
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user || null)
-      setLoading(false)
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error("Error al obtener la sesión:", error)
+          // Intentar refrescar la sesión si hay un error
+          const refreshed = await refreshSession()
+          if (!refreshed) {
+            // Si no se pudo refrescar, limpiar el estado
+            setUser(null)
+          }
+        } else {
+          setUser(session?.user || null)
+        }
+      } catch (error) {
+        console.error("Error inesperado al obtener la sesión:", error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
 
       const {
         data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("Evento de autenticación:", event)
+
+        if (event === "TOKEN_REFRESHED") {
+          console.log("Token refrescado exitosamente")
+        }
+
+        if (event === "SIGNED_OUT") {
+          // Limpiar cualquier dato local al cerrar sesión
+          localStorage.removeItem("supabase.auth.token")
+        }
+
         setUser(session?.user || null)
       })
 
@@ -60,11 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+      // Limpiar cualquier dato local al cerrar sesión
+      localStorage.removeItem("supabase.auth.token")
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signInWithMagicLink, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signInWithMagicLink, signOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )
