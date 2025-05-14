@@ -24,9 +24,17 @@ export function AuthForm() {
   // Crear perfil inicial cuando el usuario se autentica
   useEffect(() => {
     const checkAndCreateProfile = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) {
-        await createInitialProfile()
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          console.log("Usuario autenticado, creando perfil inicial si es necesario...")
+          const result = await createInitialProfile()
+          if (!result.success) {
+            console.error("Error al crear perfil inicial:", result.error)
+          }
+        }
+      } catch (error) {
+        console.error("Error al verificar sesión o crear perfil:", error)
       }
     }
 
