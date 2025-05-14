@@ -77,7 +77,11 @@ export async function submitComment({
   storyId,
   content,
   isAnonymous,
-}: { storyId: string; content: string; isAnonymous: boolean }) {
+}: {
+  storyId: string
+  content: string
+  isAnonymous: boolean
+}) {
   const supabase = createServerActionClient({ cookies })
 
   try {
@@ -520,27 +524,78 @@ export async function rejectStory(storyId: string) {
 
 export async function improveStoryWithAI(content: string) {
   try {
-    // Esta función ahora debería importar y usar OpenAI desde un archivo separado
-    // o usar una API route para evitar problemas en el navegador
+    // Verificar que estamos en el servidor
+    if (typeof window !== "undefined") {
+      console.error("improveStoryWithAI debe ser llamada solo desde el servidor")
+      return { success: false, error: "Esta función solo puede ejecutarse en el servidor" }
+    }
 
-    // Ejemplo de implementación usando fetch a una API route
-    const response = await fetch("/api/admin/improve-content", {
+    // Verificar que tenemos una API key
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY no está configurada")
+      return { success: false, error: "API key no configurada" }
+    }
+
+    // Verificar que tenemos contenido
+    if (!content) {
+      console.error("No se proporcionó contenido para mejorar")
+      return { success: false, error: "Contenido no proporcionado" }
+    }
+
+    console.log("Enviando solicitud a la API de OpenAI...")
+
+    // Construir la URL absoluta para la API route
+    const protocol = process.env.NODE_ENV === "development" ? "http" : "https"
+    const host = process.env.NEXT_PUBLIC_VERCEL_URL || "localhost:3000"
+    const baseUrl = `${protocol}://${host}`
+
+    // Obtener las cookies para pasarlas a la solicitud
+    const cookieStore = cookies()
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ")
+
+    // Usar nuestra API Route para mejorar el contenido
+    const response = await fetch(`${baseUrl}/api/admin/improve-content`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Cookie: cookieHeader, // Pasar las cookies para mantener la sesión
       },
       body: JSON.stringify({ content }),
+      cache: "no-store",
+      credentials: "include", // Importante para incluir cookies
     })
 
+    // Manejar errores de la respuesta
     if (!response.ok) {
-      const errorData = await response.json()
-      return { success: false, error: errorData.error || `Error ${response.status}` }
+      const contentType = response.headers.get("content-type") || ""
+
+      if (contentType.includes("application/json")) {
+        const errorData = await response.json()
+        console.error("Error JSON de la API:", errorData)
+        return { success: false, error: errorData.error || `Error ${response.status}: ${response.statusText}` }
+      } else {
+        // Si no es JSON, obtener el texto para depuración
+        const textResponse = await response.text()
+        console.error("Respuesta no-JSON de la API:", textResponse.substring(0, 500)) // Primeros 500 caracteres
+        return { success: false, error: `Error ${response.status}: La API no devolvió JSON válido` }
+      }
     }
 
+    // Procesar la respuesta JSON
     const data = await response.json()
+
+    if (!data.success) {
+      console.error("Error en la respuesta de la API:", data.error)
+      return { success: false, error: data.error || "Error al mejorar el contenido" }
+    }
+
+    console.log("Contenido mejorado recibido correctamente")
     return { success: true, improvedContent: data.improvedContent }
   } catch (error) {
-    console.error("Error in improveStoryWithAI action:", error)
+    console.error("Error en improveStoryWithAI:", error)
     return { success: false, error: error instanceof Error ? error.message : "Error al mejorar el contenido con IA" }
   }
 }
