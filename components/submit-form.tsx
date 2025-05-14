@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { submitStory } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, X, Info, CheckCircle2 } from "lucide-react"
+import { AlertTriangle, X, Info, CheckCircle2, MapPin } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/country-flag"
 import type { Tag } from "@/lib/types"
 
 const industries = [
@@ -42,6 +43,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   const [newTagInput, setNewTagInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const [userCountry, setUserCountry] = useState("XX")
   const [formErrors, setFormErrors] = useState<{
     title?: string
     content?: string
@@ -52,6 +54,17 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   const { toast } = useToast()
   const router = useRouter()
   const newTagInputRef = useRef<HTMLInputElement>(null)
+
+  // Obtener el país del usuario desde la cookie
+  useEffect(() => {
+    const country =
+      document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("user-country="))
+        ?.split("=")[1] || "XX"
+
+    setUserCountry(country)
+  }, [])
 
   // Ordenar las etiquetas por popularidad (simulado - en un sistema real, esto vendría de la base de datos)
   const sortedTags = [...tags].sort((a, b) => (b.count || 0) - (a.count || 0))
@@ -238,6 +251,17 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
           contenido.
         </AlertDescription>
       </Alert>
+
+      {/* Mostrar el país detectado */}
+      <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center">
+        <MapPin className="h-5 w-5 mr-2 text-purple-500" />
+        <div>
+          <p className="text-sm font-medium">Tu ubicación detectada:</p>
+          <div className="flex items-center mt-1">
+            <CountryFlag countryCode={userCountry} showName={true} className="text-base" />
+          </div>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">

@@ -11,6 +11,7 @@ export type Story = {
   published: boolean
   user_id?: string
   tags?: Tag[]
+  country?: string // Añadimos el país a las historias
 }
 
 export type Comment = {
@@ -45,6 +46,7 @@ export type Profile = {
   website?: string
   created_at?: string
   updated_at?: string
+  country?: string // Añadimos el campo country
 }
 
 export type AdminUser = {

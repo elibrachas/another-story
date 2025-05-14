@@ -48,6 +48,11 @@ export async function createInitialProfile() {
     const username = await generateUniqueUsername(supabase)
     console.log("Nombre de usuario generado:", username)
 
+    // Obtener el país del usuario desde la cookie
+    const cookieStore = cookies()
+    const country = cookieStore.get("user-country")?.value || "XX"
+    console.log("País del usuario:", country)
+
     // Crear el perfil inicial
     console.log("Creando perfil inicial...")
     const { data: newProfile, error } = await supabase
@@ -56,6 +61,7 @@ export async function createInitialProfile() {
         id: userId,
         username: username,
         admin: false,
+        country: country, // Establecer el país del usuario
       })
       .select()
       .single()
@@ -157,19 +163,20 @@ export async function submitStory({
 
     const userId = session.user.id
 
-    // Obtener el nombre de usuario del perfil
+    // Obtener el nombre de usuario y país del perfil
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("username")
+      .select("username, country")
       .eq("id", userId)
       .single()
 
     if (profileError) {
-      console.error("Error al obtener el nombre de usuario:", profileError)
+      console.error("Error al obtener el perfil del usuario:", profileError)
       return { success: false, error: profileError.message }
     }
 
     const author = profile?.username || "Anónimo"
+    const country = profile?.country || "XX"
 
     // Insertar la historia
     const { data: storyData, error: storyError } = await supabase
@@ -181,6 +188,7 @@ export async function submitStory({
         industry: sanitizeHtml(industry),
         user_id: userId,
         published: false, // Las historias se envían como no publicadas por defecto
+        country: country, // Incluir el país del usuario
       })
       .select()
       .single()
