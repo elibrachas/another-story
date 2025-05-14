@@ -93,20 +93,50 @@ export async function submitStory({
     const userId = session.user.id
 
     // Verificar si el usuario es administrador y obtener su perfil
+    // Modificamos esta parte para manejar el caso donde no existe el perfil
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("admin, username, display_name")
       .eq("id", userId)
-      .single()
+      .maybeSingle() // Cambiamos single() por maybeSingle() para evitar errores si no hay perfil
 
-    if (profileError) {
+    // Si hay un error que no sea "no se encontraron filas", lanzar error
+    if (profileError && profileError.code !== "PGRST116") {
       console.error("Error checking profile:", profileError)
       throw new Error("Failed to check user profile")
     }
 
-    const isAdmin = profileData?.admin || false
-    const username = profileData?.username || "Anónimo"
-    const displayName = profileData?.display_name || null
+    // Si no hay perfil, crearlo automáticamente
+    let isAdmin: boolean
+    let localUsername: string
+    let displayName: string | null
+
+    if (!profileData) {
+      console.log("No profile found, creating one automatically")
+      const username = await generateUniqueUsername(supabase)
+
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: userId,
+        username: username,
+        email: session.user.email,
+        admin: false,
+      })
+
+      if (insertError) {
+        console.error("Error creating profile automatically:", insertError)
+        throw new Error("Failed to create profile automatically")
+      }
+
+      // Usar los valores recién creados
+      isAdmin = false
+      localUsername = username
+      displayName = null
+    } else {
+      // Usar los valores del perfil existente
+      isAdmin = profileData?.admin || false
+      localUsername = profileData?.username || "Anónimo"
+      displayName = profileData?.display_name || null
+    }
 
     // Si no es administrador, verificar el límite diario de historias
     if (!isAdmin) {
@@ -136,7 +166,7 @@ export async function submitStory({
     }
 
     // Usar el nombre de usuario o "Anónimo" si se seleccionó anónimo
-    const author = isAnonymous ? "Anónimo" : username
+    const author = isAnonymous ? "Anónimo" : localUsername
 
     // Insertar la historia con el nombre visible si existe y no es anónimo
     const { data: storyData, error: storyError } = await supabase
@@ -243,19 +273,42 @@ export async function submitComment({
     const userId = session.user.id
 
     // Obtener el perfil del usuario para el nombre de usuario y nombre visible
+    // Modificamos para usar maybeSingle() en lugar de single()
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("username, display_name")
       .eq("id", userId)
-      .single()
+      .maybeSingle()
 
-    if (profileError) {
+    // Si hay un error que no sea "no se encontraron filas", lanzar error
+    if (profileError && profileError.code !== "PGRST116") {
       console.error("Error fetching user profile:", profileError)
       throw new Error("Failed to fetch user profile")
     }
 
-    const username = profileData?.username || "Anónimo"
-    const displayName = profileData?.display_name || null
+    // Si no hay perfil, crear uno automáticamente
+    let username = "Anónimo"
+    let displayName = null
+
+    if (!profileData) {
+      console.log("No profile found for comment, creating one automatically")
+      username = await generateUniqueUsername(supabase)
+
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: userId,
+        username: username,
+        email: session.user.email,
+        admin: false,
+      })
+
+      if (insertError) {
+        console.error("Error creating profile automatically for comment:", insertError)
+        throw new Error("Failed to create profile automatically for comment")
+      }
+    } else {
+      username = profileData?.username || "Anónimo"
+      displayName = profileData?.display_name || null
+    }
 
     // Usar el nombre de usuario o "Anónimo" si se seleccionó anónimo
     const author = isAnonymous ? "Anónimo" : username
