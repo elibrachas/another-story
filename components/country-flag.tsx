@@ -1,4 +1,5 @@
 "use client"
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Mapa de códigos de país a nombres
@@ -63,16 +64,28 @@ export function CountryFlag({
   showName?: boolean
   className?: string
 }) {
-  // Usar el mapa directo en lugar de calcular el emoji
-  const flagEmoji = countryFlags[countryCode?.toUpperCase()] || "🌎"
-  const countryName = countryNames[countryCode?.toUpperCase()] || "Desconocido"
+  // Normalizar el código de país y manejar casos nulos/indefinidos
+  const normalizedCode = countryCode?.toUpperCase() || "XX"
+
+  // Obtener el emoji de la bandera y el nombre del país
+  const flagEmoji = countryFlags[normalizedCode] || "🌎"
+  const countryName = countryNames[normalizedCode] || "Desconocido"
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={`inline-flex items-center ${className}`}>
-            <span className="text-lg">{flagEmoji}</span>
+          <span className={`inline-flex items-center ${className}`} data-country={normalizedCode}>
+            <span
+              className="text-lg"
+              style={{
+                display: "inline-block",
+                lineHeight: 1,
+                verticalAlign: "middle",
+              }}
+            >
+              {flagEmoji}
+            </span>
             {showName && <span className="ml-1 text-sm">{countryName}</span>}
           </span>
         </TooltipTrigger>
