@@ -40,14 +40,27 @@ export async function middleware(req: NextRequest) {
     if (session) {
       try {
         // Verificar si el perfil ya tiene un país asignado
-        const { data: profile } = await supabase.from("profiles").select("country").eq("id", session.user.id).single()
+        // Usar maybeSingle en lugar de single para evitar errores 406
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("country")
+          .eq("id", session.user.id)
+          .maybeSingle()
 
-        // Solo actualizar si el perfil existe y no tiene país o tiene 'XX'
-        if (profile && (profile.country === "XX" || !profile.country)) {
-          await supabase.from("profiles").update({ country }).eq("id", session.user.id)
+        if (profileError) {
+          console.error("Error al obtener el perfil en middleware:", profileError)
+        } else {
+          // Solo actualizar si el perfil existe y no tiene país o tiene 'XX'
+          if (profile && (profile.country === "XX" || !profile.country)) {
+            const { error: updateError } = await supabase.from("profiles").update({ country }).eq("id", session.user.id)
+
+            if (updateError) {
+              console.error("Error al actualizar el país en el perfil:", updateError)
+            }
+          }
         }
       } catch (error) {
-        console.error("Error al actualizar el país en el perfil:", error)
+        console.error("Error inesperado al actualizar el país en el perfil:", error)
       }
     }
   } catch (error) {

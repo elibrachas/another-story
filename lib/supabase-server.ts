@@ -57,7 +57,8 @@ export async function getStoryById(id: string) {
   const supabase = createServerComponentClient({ cookies })
 
   try {
-    const { data: story, error } = await supabase.from("stories").select("*").eq("id", id).single()
+    // Usar maybeSingle en lugar de single para evitar errores 406
+    const { data: story, error } = await supabase.from("stories").select("*").eq("id", id).maybeSingle()
 
     if (error) {
       console.error("Error al obtener historia:", error)
@@ -245,5 +246,64 @@ export async function getStoriesByTag(tagId: string) {
   } catch (error) {
     console.error("Error inesperado al obtener historias por etiqueta:", error)
     return []
+  }
+}
+
+// Función para verificar si un usuario existe por nombre de usuario
+export async function getUserByUsername(username: string) {
+  const supabase = createServerComponentClient({ cookies })
+
+  try {
+    // Usar maybeSingle en lugar de single para evitar errores 406
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, admin")
+      .eq("username", username)
+      .maybeSingle()
+
+    if (error) {
+      console.error("Error al obtener usuario por nombre de usuario:", error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error inesperado al obtener usuario por nombre de usuario:", error)
+    return null
+  }
+}
+
+// Función para obtener el perfil del usuario actual
+export async function getCurrentUserProfile() {
+  const supabase = createServerComponentClient({ cookies })
+
+  try {
+    // Obtener la sesión actual
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError || !session) {
+      console.error("Error al obtener la sesión o usuario no autenticado:", sessionError)
+      return null
+    }
+
+    // Usar maybeSingle en lugar de single para evitar errores 406
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error al obtener el perfil del usuario:", profileError)
+      return null
+    }
+
+    return profile
+  } catch (error) {
+    console.error("Error inesperado al obtener el perfil del usuario:", error)
+    return null
   }
 }

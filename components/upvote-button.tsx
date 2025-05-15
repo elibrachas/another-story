@@ -41,11 +41,16 @@ export function UpvoteButton({
         // Si no está en localStorage, verificar en la base de datos
         const supabase = createClientComponentClient()
         const { data, error } = await supabase
-          .from("upvotes") // Usar "upvotes" en lugar de "story_upvotes"
+          .from("upvotes")
           .select("*")
           .eq("story_id", storyId)
           .eq("user_id", session.user.id)
-          .single()
+          .maybeSingle() // Usar maybeSingle en lugar de single para evitar errores 406
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Error al verificar upvote:", error)
+          return
+        }
 
         if (data) {
           setHasUpvoted(true)

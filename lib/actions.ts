@@ -279,9 +279,9 @@ export async function upvoteStory(storyId: string) {
       .select("*")
       .eq("story_id", storyId)
       .eq("user_id", userId)
-      .maybeSingle()
+      .maybeSingle() // Usar maybeSingle en lugar de single
 
-    if (checkError) {
+    if (checkError && checkError.code !== "PGRST116") {
       console.error("Error al verificar voto existente:", checkError)
       return { success: false, error: checkError.message }
     }
@@ -302,12 +302,22 @@ export async function upvoteStory(storyId: string) {
       return { success: false, error: insertError.message }
     }
 
+    // Incrementar el contador de votos en la historia
+    const { data: updatedStory, error: updateError } = await supabase
+      .rpc("increment_story_upvotes", { story_id: storyId })
+      .maybeSingle()
+
+    if (updateError) {
+      console.error("Error al incrementar contador de votos:", updateError)
+      // No revertimos la inserción del voto, pero registramos el error
+    }
+
     // Obtener el nuevo contador de votos
-    const { data: updatedStory, error: fetchError } = await supabase
+    const { data: story, error: fetchError } = await supabase
       .from("stories")
       .select("upvotes")
       .eq("id", storyId)
-      .single()
+      .maybeSingle() // Usar maybeSingle en lugar de single
 
     if (fetchError) {
       console.error("Error al obtener contador actualizado:", fetchError)
@@ -319,7 +329,7 @@ export async function upvoteStory(storyId: string) {
 
     return {
       success: true,
-      newUpvoteCount: updatedStory?.upvotes || null,
+      newUpvoteCount: story?.upvotes || null,
     }
   } catch (error) {
     console.error("Error in upvoteStory action:", error)
