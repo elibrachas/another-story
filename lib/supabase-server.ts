@@ -307,3 +307,31 @@ export async function getCurrentUserProfile() {
     return null
   }
 }
+
+// Función para obtener el conteo de comentarios para múltiples historias
+export async function getCommentCountsForStories(storyIds: string[]) {
+  if (!storyIds || storyIds.length === 0) return {}
+
+  const supabase = createServerComponentClient({ cookies })
+
+  try {
+    // Usar la función SQL que creamos para obtener los conteos de comentarios
+    const { data, error } = await supabase.rpc("get_comment_counts", { story_ids: storyIds })
+
+    if (error) {
+      console.error("Error al obtener conteo de comentarios:", error)
+      return {}
+    }
+
+    // Convertir el resultado a un objeto para fácil acceso
+    const commentCounts: Record<string, number> = {}
+    data?.forEach((item) => {
+      commentCounts[item.story_id] = Number(item.comment_count)
+    })
+
+    return commentCounts
+  } catch (error) {
+    console.error("Error inesperado al obtener conteo de comentarios:", error)
+    return {}
+  }
+}

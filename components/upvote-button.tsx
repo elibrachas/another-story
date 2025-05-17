@@ -1,136 +1,61 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
 import { ThumbsUp } from "lucide-react"
-import { LoginDialog } from "@/components/login-dialog"
 import { upvoteStory } from "@/lib/actions"
-import { useToast } from "@/components/ui/use-toast"
-import { useSupabase } from "@/lib/supabase-provider"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useToast } from "@/hooks/use-toast"
 
-export function UpvoteButton({
-  storyId,
-  initialUpvotes,
-}: {
+interface UpvoteButtonProps {
   storyId: string
   initialUpvotes: number
-}) {
+}
+
+export function UpvoteButton({ storyId, initialUpvotes }: UpvoteButtonProps) {
   const [upvotes, setUpvotes] = useState(initialUpvotes)
+  const [isUpvoting, setIsUpvoting] = useState(false)
   const [hasUpvoted, setHasUpvoted] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [showLoginDialog, setShowLoginDialog] = useState(false)
-  const { session } = useSupabase()
   const { toast } = useToast()
 
-  // Verificar si el usuario ya ha votado por esta historia
-  useEffect(() => {
-    async function checkIfUserHasUpvoted() {
-      if (!session) return
-
-      try {
-        // Verificar en localStorage primero (más rápido)
-        const localStorageKey = `upvoted_story_${storyId}`
-        const hasUpvotedLocally = localStorage.getItem(localStorageKey) === "true"
-
-        if (hasUpvotedLocally) {
-          setHasUpvoted(true)
-          return
-        }
-
-        // Si no está en localStorage, verificar en la base de datos
-        const supabase = createClientComponentClient()
-        const { data, error } = await supabase
-          .from("upvotes")
-          .select("*")
-          .eq("story_id", storyId)
-          .eq("user_id", session.user.id)
-          .maybeSingle() // Usar maybeSingle en lugar de single para evitar errores 406
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Error al verificar upvote:", error)
-          return
-        }
-
-        if (data) {
-          setHasUpvoted(true)
-          // Guardar en localStorage para futuras verificaciones
-          localStorage.setItem(localStorageKey, "true")
-        }
-      } catch (error) {
-        console.error("Error al verificar upvote:", error)
-      }
-    }
-
-    checkIfUserHasUpvoted()
-  }, [session, storyId])
-
   const handleUpvote = async () => {
-    if (!session) {
-      setShowLoginDialog(true)
-      return
-    }
+    if (hasUpvoted || isUpvoting) return
 
-    if (hasUpvoted || isLoading) return
-
+    setIsUpvoting(true)
     try {
-      setIsLoading(true)
-
-      // Actualización optimista de la UI
-      setUpvotes((prev) => prev + 1)
-      setHasUpvoted(true)
-
-      // Guardar en localStorage inmediatamente
-      localStorage.setItem(`upvoted_story_${storyId}`, "true")
-
-      // Enviar al servidor
       const result = await upvoteStory(storyId)
 
-      if (!result.success) {
-        // Revertir cambios si hay error
-        setUpvotes((prev) => prev - 1)
-        setHasUpvoted(false)
-        localStorage.removeItem(`upvoted_story_${storyId}`)
-
+      if (result.success) {
+        setUpvotes(result.upvotes || upvotes + 1)
+        setHasUpvoted(true)
+      } else {
         toast({
-          title: "Error",
-          description: result.error || "Error al votar por la historia",
+          title: "Error al votar",
+          description: result.error || "No se pudo registrar tu voto. Inténtalo de nuevo más tarde.",
           variant: "destructive",
         })
-      } else if (result.newUpvoteCount !== null) {
-        // Actualizar con el valor exacto del servidor si está disponible
-        setUpvotes(result.newUpvoteCount)
       }
     } catch (error) {
-      // Revertir cambios si hay error
-      setUpvotes((prev) => prev - 1)
-      setHasUpvoted(false)
-      localStorage.removeItem(`upvoted_story_${storyId}`)
-
+      console.error("Error al votar:", error)
       toast({
-        title: "Error",
-        description: "Error al votar por la historia",
+        title: "Error al votar",
+        description: "Ocurrió un error inesperado. Inténtalo de nuevo más tarde.",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsUpvoting(false)
     }
   }
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleUpvote}
-        disabled={isLoading || hasUpvoted}
-        className={`gap-1 ${hasUpvoted ? "text-purple-500" : ""}`}
-      >
-        <ThumbsUp className={`h-4 w-4 ${isLoading ? "animate-pulse" : ""}`} />
-        <span>{upvotes}</span>
-      </Button>
-
-      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
-    </>
+    <button
+      onClick={handleUpvote}
+      disabled={isUpvoting || hasUpvoted}
+      className={`flex items-center gap-1 text-sm ${
+        hasUpvoted ? "text-purple-600" : "text-gray-500 hover:text-gray-700"
+      } transition-colors disabled:opacity-70`}
+      aria-label={hasUpvoted ? "Ya has votado" : "Votar por esta historia"}
+    >
+      <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? "fill-purple-600" : ""}`} />
+      <span>{upvotes}</span>
+    </button>
   )
 }
