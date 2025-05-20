@@ -30,45 +30,40 @@ export function AuthForm() {
         const { data } = await supabase.auth.getSession()
 
         if (data.session) {
-          console.log("Usuario autenticado, creando perfil inicial...")
+          console.log("Usuario autenticado, verificando si ya existe perfil...")
 
-          // Intentar crear el perfil varias veces si es necesario
-          let attempts = 0
-          let success = false
+          // Primero verificar si ya existe un perfil para evitar creaciones duplicadas
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", data.session.user.id)
+            .single()
 
-          while (attempts < 3 && !success) {
-            attempts++
-            console.log(`Intento ${attempts} de crear perfil...`)
+          if (profileError && profileError.code !== "PGRST116") {
+            console.error("Error al verificar perfil existente:", profileError)
+          }
 
+          // Solo crear perfil si no existe
+          if (!profileData) {
+            console.log("Perfil no encontrado, creando uno nuevo...")
             const result = await createInitialProfile()
 
             if (result.success) {
               console.log("Perfil creado exitosamente")
-              success = true
-              break
             } else {
-              console.error(`Error en intento ${attempts}:`, result.error)
-              // Esperar un poco antes de reintentar
-              await new Promise((resolve) => setTimeout(resolve, 1000))
+              console.error("Error al crear perfil:", result.error)
+              toast({
+                title: "Error",
+                description: "No se pudo crear tu perfil. Por favor, intenta recargar la página.",
+                variant: "destructive",
+              })
             }
-          }
-
-          if (!success) {
-            console.error("No se pudo crear el perfil después de varios intentos")
-            toast({
-              title: "Error",
-              description: "No se pudo crear tu perfil. Por favor, intenta recargar la página.",
-              variant: "destructive",
-            })
+          } else {
+            console.log("Perfil ya existe, no es necesario crearlo")
           }
         }
       } catch (error) {
         console.error("Error al verificar sesión o crear perfil:", error)
-        toast({
-          title: "Error",
-          description: "Hubo un problema al configurar tu perfil.",
-          variant: "destructive",
-        })
       } finally {
         setIsCreatingProfile(false)
       }
@@ -102,27 +97,42 @@ export function AuthForm() {
 
     try {
       setIsLoading(true)
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Asegurarse de que se creen usuarios nuevos si no existen
+          shouldCreateUser: true,
         },
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Error al enviar OTP:", error)
+        throw error
+      }
 
       toast({
         title: "Enlace enviado",
-        description: "Revisa tu correo electrónico para iniciar sesión",
+        description: "Revisa tu correo electrónico para iniciar sesión. El enlace es válido por 1 hora.",
       })
+    } catch (error: any) {
+      console.error("Error detallado:", error)
 
-      // No redirigimos aquí, ya que el usuario necesita revisar su correo
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo enviar el enlace de inicio de sesión",
-        variant: "destructive",
-      })
+      // Mensajes de error más específicos
+      if (error.message?.includes("rate limit")) {
+        toast({
+          title: "Demasiados intentos",
+          description:
+            "Has excedido el límite de intentos. Por favor, espera unos minutos antes de intentarlo nuevamente.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo enviar el enlace de inicio de sesión: " + (error.message || "Error desconocido"),
+          variant: "destructive",
+        })
+      }
     } finally {
       setIsLoading(false)
     }

@@ -49,23 +49,43 @@ export function LoginDialog({
 
     try {
       setIsLoading(true)
-      await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Asegurarse de que no se creen usuarios nuevos si no existen
+          shouldCreateUser: true,
         },
       })
+
+      if (error) {
+        console.error("Error al enviar OTP:", error)
+        throw error
+      }
+
       toast({
         title: "Revisa tu correo",
-        description: "Te hemos enviado un enlace mágico para iniciar sesión",
+        description: "Te hemos enviado un enlace mágico para iniciar sesión. Válido por 1 hora.",
       })
       onOpenChange(false)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error al enviar el enlace mágico",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      console.error("Error detallado:", error)
+
+      // Mensajes de error más específicos
+      if (error.message?.includes("rate limit")) {
+        toast({
+          title: "Demasiados intentos",
+          description:
+            "Has excedido el límite de intentos. Por favor, espera unos minutos antes de intentarlo nuevamente.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Error al enviar el enlace mágico: " + (error.message || "Error desconocido"),
+          variant: "destructive",
+        })
+      }
     } finally {
       setIsLoading(false)
     }

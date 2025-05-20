@@ -97,12 +97,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signInWithMagicLink = async (email: string) => {
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Asegurarse de que se creen usuarios nuevos si no existen
+          shouldCreateUser: true,
+        },
+      })
+
+      if (error) {
+        console.error("Error al enviar OTP:", error)
+        throw error
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error("Error en signInWithMagicLink:", error)
+      return { success: false, error }
+    }
   }
 
   const signOut = async () => {
