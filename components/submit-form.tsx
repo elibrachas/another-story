@@ -19,6 +19,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { CountryFlag } from "@/components/country-flag"
 import type { Tag } from "@/lib/types"
+import {
+  savePendingStory,
+  getPendingStory,
+  clearPendingStory,
+  savePendingStoryEmail,
+} from "@/lib/pending-story-service"
 
 const industries = [
   "Tecnología",
@@ -50,6 +56,8 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
     industry?: string
   }>({})
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [pendingSubmission, setPendingSubmission] = useState(false)
+  const [loginEmail, setLoginEmail] = useState("")
   const { session } = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
@@ -65,6 +73,44 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
     setUserCountry(country)
   }, [])
+
+  // Cargar historia pendiente si existe
+  useEffect(() => {
+    if (session) {
+      const pendingStory = getPendingStory()
+      if (pendingStory) {
+        // Preguntar al usuario si desea cargar la historia pendiente
+        const confirmLoad = window.confirm("Encontramos una historia que estabas escribiendo. ¿Deseas cargarla?")
+
+        if (confirmLoad) {
+          setTitle(pendingStory.title)
+          setContent(pendingStory.content)
+          setIndustry(pendingStory.industry)
+          setIsAnonymous(pendingStory.isAnonymous)
+          setSelectedTags(pendingStory.selectedTags)
+          setCustomTags(pendingStory.customTags)
+
+          toast({
+            title: "Historia cargada",
+            description: "Se ha cargado tu historia pendiente",
+          })
+        }
+
+        // Limpiar la historia pendiente después de cargarla o si el usuario rechaza
+        clearPendingStory()
+      }
+    }
+  }, [session, toast])
+
+  // Efecto para detectar cuando el usuario se autentica y tiene una presentación pendiente
+  useEffect(() => {
+    // Si el usuario acaba de autenticarse y hay una presentación pendiente, enviar automáticamente
+    if (session && pendingSubmission) {
+      console.log("Usuario autenticado con envío pendiente, procesando automáticamente...")
+      handleSubmit(new Event("submit") as React.FormEvent)
+      setPendingSubmission(false)
+    }
+  }, [session, pendingSubmission])
 
   // Ordenar las etiquetas por popularidad (simulado - en un sistema real, esto vendría de la base de datos)
   const sortedTags = [...tags].sort((a, b) => (b.count || 0) - (a.count || 0))
@@ -110,18 +156,30 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!session) {
-      setShowLoginDialog(true)
-      return
-    }
-
-    // Validar el formulario
+    // Validar el formulario primero, independientemente del estado de autenticación
     if (!validateForm()) {
       toast({
         title: "Campos faltantes",
         description: "Por favor completa todos los campos requeridos",
         variant: "destructive",
       })
+      return
+    }
+
+    if (!session) {
+      // Guardar la historia pendiente antes de mostrar el diálogo de inicio de sesión
+      savePendingStory({
+        title,
+        content,
+        industry,
+        isAnonymous,
+        selectedTags,
+        customTags,
+      })
+
+      // Marcar que hay una presentación pendiente
+      setPendingSubmission(true)
+      setShowLoginDialog(true)
       return
     }
 
@@ -147,6 +205,9 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         setIsSubmitting(false)
         return
       }
+
+      // Limpiar cualquier historia pendiente después de un envío exitoso
+      clearPendingStory()
 
       // Mostrar mensaje de éxito
       setSubmitSuccess(true)
@@ -214,6 +275,23 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   }
 
   const getTotalTagsCount = () => selectedTags.length + customTags.length
+
+  // Manejar el cierre del diálogo de inicio de sesión
+  const handleLoginDialogClose = (success: boolean, email?: string) => {
+    setShowLoginDialog(false)
+
+    // Si se proporcionó un email, guardarlo junto con la historia pendiente
+    if (email) {
+      savePendingStoryEmail(email)
+    }
+
+    // Si el inicio de sesión no fue exitoso, mantener la historia pendiente
+    // pero cancelar la presentación pendiente automática
+    if (!success) {
+      setPendingSubmission(false)
+    }
+    // Si fue exitoso, el useEffect se encargará de enviar el formulario
+  }
 
   // Si el envío fue exitoso, mostrar mensaje de confirmación
   if (submitSuccess) {
@@ -442,7 +520,14 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         </Button>
       </form>
 
-      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+      <LoginDialog
+        open={showLoginDialog}
+        onOpenChange={(open) => {
+          if (!open) handleLoginDialogClose(false)
+        }}
+        onLoginSuccess={(email) => handleLoginDialogClose(true, email)}
+        onEmailChange={setLoginEmail}
+      />
     </>
   )
 }

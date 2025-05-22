@@ -50,3 +50,35 @@ export async function verifyAdminAccess(supabase: SupabaseClient) {
     return { authorized: false, error: "Error interno del servidor" }
   }
 }
+
+/**
+ * Limpia los tokens almacenados localmente
+ */
+export const clearAuthTokens = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("supabase.auth.token")
+    // Limpiar cualquier otra información de autenticación almacenada
+    sessionStorage.removeItem("supabase.auth.token")
+    document.cookie.split(";").forEach((cookie) => {
+      const [name] = cookie.split("=")
+      if (name.trim().startsWith("sb-")) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+      }
+    })
+  }
+}
+
+/**
+ * Verifica si un token está próximo a expirar
+ * @param expiryTime Tiempo de expiración en segundos desde epoch
+ * @param thresholdMinutes Minutos antes de la expiración para considerar el token como próximo a expirar
+ */
+export const isTokenExpiringSoon = (expiryTime: number, thresholdMinutes = 5): boolean => {
+  if (!expiryTime) return true
+
+  const expiryDate = new Date(expiryTime * 1000)
+  const now = new Date()
+  const thresholdMs = thresholdMinutes * 60 * 1000
+
+  return expiryDate.getTime() - now.getTime() < thresholdMs
+}

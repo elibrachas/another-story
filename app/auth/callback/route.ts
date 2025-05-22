@@ -7,22 +7,38 @@ import { createInitialProfile } from "@/lib/actions"
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
+  const error = requestUrl.searchParams.get("error")
+  const errorDescription = requestUrl.searchParams.get("error_description")
 
-  if (code) {
+  // Si hay un error en la URL, redirigir a la página de error
+  if (error) {
+    console.error(`Error en callback de autenticación: ${error} - ${errorDescription}`)
+    return NextResponse.redirect(`${requestUrl.origin}/auth?error=${error}&error_description=${errorDescription}`)
+  }
+
+  if (!code) {
+    console.error("No se encontró código en la URL de callback")
+    return NextResponse.redirect(`${requestUrl.origin}/auth?error=no_code`)
+  }
+
+  try {
     const supabase = createRouteHandlerClient({ cookies })
 
-    try {
-      // Intercambiar el código por una sesión
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    // Intercambiar el código por una sesión
+    const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
-      if (error) {
-        console.error("Error al intercambiar código por sesión:", error)
-        // Redirigir a una página de error
-        return NextResponse.redirect(`${requestUrl.origin}/auth?error=session_exchange`)
-      }
+    if (sessionError) {
+      console.error("Error al intercambiar código por sesión:", sessionError)
 
-      // Verificar si el usuario ya tiene un perfil para evitar creaciones duplicadas
-      if (data?.session?.user) {
+      // Redirigir a una página de error con información específica
+      return NextResponse.redirect(
+        `${requestUrl.origin}/auth?error=session_exchange&message=${encodeURIComponent(sessionError.message)}`,
+      )
+    }
+
+    // Verificar si el usuario ya tiene un perfil para evitar creaciones duplicadas
+    if (data?.session?.user) {
+      try {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("id")
@@ -36,25 +52,21 @@ export async function GET(request: NextRequest) {
         // Solo crear perfil si no existe
         if (!profileData) {
           console.log("Creando perfil inicial desde callback...")
-          try {
-            const result = await createInitialProfile()
-            console.log("Resultado de createInitialProfile:", result)
-          } catch (error) {
-            console.error("Error al crear perfil inicial desde callback:", error)
-          }
+          const result = await createInitialProfile()
+          console.log("Resultado de createInitialProfile:", result)
         } else {
           console.log("Perfil ya existe, no es necesario crearlo")
         }
+      } catch (profileError) {
+        console.error("Error al verificar o crear perfil:", profileError)
+        // Continuar con la redirección aunque haya error en la creación del perfil
       }
-    } catch (error) {
-      console.error("Error inesperado en callback:", error)
-      return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)
     }
-  } else {
-    console.error("No se encontró código en la URL de callback")
-    return NextResponse.redirect(`${requestUrl.origin}/auth?error=no_code`)
-  }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(requestUrl.origin)
+    // Redirigir a la página principal con un parámetro de éxito
+    return NextResponse.redirect(`${requestUrl.origin}?auth_success=true`)
+  } catch (error) {
+    console.error("Error inesperado en callback:", error)
+    return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)
+  }
 }

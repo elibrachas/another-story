@@ -3,21 +3,22 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
+import { Mail, Loader2, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
-export function LoginDialog({
-  open,
-  onOpenChange,
-}: {
+interface LoginDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-}) {
+  onLoginSuccess?: () => void
+}
+
+export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogProps) {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
@@ -33,10 +34,12 @@ export function LoginDialog({
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
+      // No podemos llamar a onLoginSuccess aquí porque la redirección ocurre antes
     } catch (error) {
+      console.error("Error al iniciar sesión con Google:", error)
       toast({
         title: "Error",
-        description: "Error al iniciar sesión con Google",
+        description: "No se pudo iniciar sesión con Google",
         variant: "destructive",
       })
     } finally {
@@ -46,15 +49,14 @@ export function LoginDialog({
 
   const handleMagicLinkSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
+    if (!email.trim()) return
 
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          // Asegurarse de que no se creen usuarios nuevos si no existen
           shouldCreateUser: true,
         },
       })
@@ -64,17 +66,14 @@ export function LoginDialog({
         throw error
       }
 
-      // Mostrar pantalla de confirmación en lugar de cerrar el diálogo
       setShowConfirmation(true)
-
       toast({
         title: "Enlace enviado",
-        description: "Te hemos enviado un enlace mágico para iniciar sesión",
+        description: "Revisa tu correo electrónico para iniciar sesión",
       })
     } catch (error: any) {
-      console.error("Error detallado:", error)
+      console.error("Error al enviar enlace mágico:", error)
 
-      // Mensajes de error más específicos
       if (error.message?.includes("rate limit")) {
         toast({
           title: "Demasiados intentos",
@@ -85,7 +84,7 @@ export function LoginDialog({
       } else {
         toast({
           title: "Error",
-          description: "Error al enviar el enlace mágico: " + (error.message || "Error desconocido"),
+          description: "No se pudo enviar el enlace de inicio de sesión",
           variant: "destructive",
         })
       }
@@ -95,8 +94,10 @@ export function LoginDialog({
   }
 
   const handleResendLink = async () => {
+    if (!email.trim()) return
+
+    setIsLoading(true)
     try {
-      setIsLoading(true)
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -130,14 +131,16 @@ export function LoginDialog({
     }
   }
 
+  const resetForm = () => {
+    setEmail("")
+    setShowConfirmation(false)
+  }
+
   return (
     <Dialog
       open={open}
       onOpenChange={(newOpen) => {
-        // Si se está cerrando el diálogo, resetear el estado de confirmación
-        if (!newOpen) {
-          setShowConfirmation(false)
-        }
+        if (!newOpen) resetForm()
         onOpenChange(newOpen)
       }}
     >
@@ -154,27 +157,20 @@ export function LoginDialog({
         {showConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <div className="bg-muted p-4 rounded-md text-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-12 w-12 mx-auto text-purple-600 mb-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
+              <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-2" />
               <p className="text-sm text-muted-foreground mb-2">
                 El enlace expirará en 1 hora. Si no lo encuentras, revisa tu carpeta de spam.
               </p>
             </div>
 
             <Button variant="outline" onClick={handleResendLink} disabled={isLoading} className="w-full">
-              Reenviar enlace
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reenviando...
+                </>
+              ) : (
+                "Reenviar enlace"
+              )}
             </Button>
 
             <Button variant="ghost" onClick={() => setShowConfirmation(false)} className="w-full">
@@ -228,7 +224,15 @@ export function LoginDialog({
                 />
               </div>
               <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isLoading}>
-                {isLoading ? "Enviando..." : "Enviar enlace mágico"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" /> Enviar enlace mágico
+                  </>
+                )}
               </Button>
             </form>
 

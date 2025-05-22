@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/lib/supabase-provider"
+import { AuthProvider } from "@/components/auth-provider" // Asegurarnos de que se importa
 import Header from "@/components/header"
 import { Footer } from "@/components/footer"
 import "./globals.css"
@@ -43,15 +44,17 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen bg-background`}>
         <SupabaseProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark">
-            <div className="flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-              <Footer />
-            </div>
-            <CookieConsent />
-            <Toaster />
-          </ThemeProvider>
+          <AuthProvider>
+            <ThemeProvider attribute="class" defaultTheme="dark">
+              <div className="flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
+                <Footer />
+              </div>
+              <CookieConsent />
+              <Toaster />
+            </ThemeProvider>
+          </AuthProvider>
         </SupabaseProvider>
       </body>
     </html>
