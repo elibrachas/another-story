@@ -58,7 +58,11 @@ console.error = (...args) => {
     typeof args[0] === "string" &&
     (args[0].includes("React does not recognize the") ||
       args[0].includes("Warning: An update to") ||
-      args[0].includes("Warning: validateDOMNesting"))
+      args[0].includes("Warning: validateDOMNesting") ||
+      args[0].includes("childContextTypes cannot be defined on a function component") ||
+      args[0].includes("Function components do not support getDerivedStateFromProps") ||
+      args[0].includes("legacy contextTypes API")
+    )
   ) {
     return
   }
