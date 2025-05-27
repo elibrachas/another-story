@@ -20,10 +20,14 @@ jest.mock("@supabase/auth-helpers-nextjs", () => ({
       update: jest.fn().mockReturnThis(),
       delete: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
       single: jest.fn().mockResolvedValue({
         data: table === "profiles" ? { username: "TestUser", admin: false } : { id: "new-id" },
         error: null,
       }),
+    })),
+    rpc: jest.fn(() => ({
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     })),
   })),
 }))
