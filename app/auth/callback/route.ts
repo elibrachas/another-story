@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Redirigir a la página principal con un parámetro de éxito
-    return NextResponse.redirect(`${requestUrl.origin}?auth_success=true`)
+    // Redirigir a la página de autenticación con un parámetro de éxito
+    return NextResponse.redirect(`${requestUrl.origin}/auth?auth_success=true`)
   } catch (error) {
     console.error("Error inesperado en callback:", error)
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)
