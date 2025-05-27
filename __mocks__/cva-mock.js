@@ -1,4 +1,3 @@
-codex/fix-typeerror-in-tag-badge-test
 const cva = () => () => ""
 cva.variants = () => ({})
 
