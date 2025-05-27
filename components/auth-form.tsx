@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
-import { createInitialProfile } from "@/lib/actions"
 import Link from "next/link"
 
 export function AuthForm() {
@@ -22,56 +21,6 @@ export function AuthForm() {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
-
-  // Crear perfil inicial cuando el usuario se autentica
-  useEffect(() => {
-    const checkAndCreateProfile = async () => {
-      try {
-        setIsCreatingProfile(true)
-        const { data } = await supabase.auth.getSession()
-
-        if (data.session) {
-          console.log("Usuario autenticado, verificando si ya existe perfil...")
-
-          // Primero verificar si ya existe un perfil para evitar creaciones duplicadas
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", data.session.user.id)
-            .single()
-
-          if (profileError && profileError.code !== "PGRST116") {
-            console.error("Error al verificar perfil existente:", profileError)
-          }
-
-          // Solo crear perfil si no existe
-          if (!profileData) {
-            console.log("Perfil no encontrado, creando uno nuevo...")
-            const result = await createInitialProfile()
-
-            if (result.success) {
-              console.log("Perfil creado exitosamente")
-            } else {
-              console.error("Error al crear perfil:", result.error)
-              toast({
-                title: "Error",
-                description: "No se pudo crear tu perfil. Por favor, intenta recargar la página.",
-                variant: "destructive",
-              })
-            }
-          } else {
-            console.log("Perfil ya existe, no es necesario crearlo")
-          }
-        }
-      } catch (error) {
-        console.error("Error al verificar sesión o crear perfil:", error)
-      } finally {
-        setIsCreatingProfile(false)
-      }
-    }
-
-    checkAndCreateProfile()
-  }, [supabase, toast])
 
   const handleGoogleSignIn = async () => {
     try {
