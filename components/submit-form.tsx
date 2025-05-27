@@ -24,6 +24,9 @@ import {
   getPendingStory,
   clearPendingStory,
   savePendingStoryEmail,
+  setPendingSubmissionFlag,
+  getPendingSubmissionFlag,
+  clearPendingSubmissionFlag,
 } from "@/lib/pending-story-service"
 
 const industries = [
@@ -79,10 +82,9 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
     if (session) {
       const pendingStory = getPendingStory()
       if (pendingStory) {
-        // Preguntar al usuario si desea cargar la historia pendiente
-        const confirmLoad = window.confirm("Encontramos una historia que estabas escribiendo. ¿Deseas cargarla?")
+        const autoSubmit = getPendingSubmissionFlag()
 
-        if (confirmLoad) {
+        if (autoSubmit) {
           setTitle(pendingStory.title)
           setContent(pendingStory.content)
           setIndustry(pendingStory.industry)
@@ -90,10 +92,27 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
           setSelectedTags(pendingStory.selectedTags)
           setCustomTags(pendingStory.customTags)
 
-          toast({
-            title: "Historia cargada",
-            description: "Se ha cargado tu historia pendiente",
-          })
+          // Marcar para envío automático
+          setPendingSubmission(true)
+        } else {
+          // Preguntar al usuario si desea cargar la historia pendiente
+          const confirmLoad = window.confirm(
+            "Encontramos una historia que estabas escribiendo. ¿Deseas cargarla?",
+          )
+
+          if (confirmLoad) {
+            setTitle(pendingStory.title)
+            setContent(pendingStory.content)
+            setIndustry(pendingStory.industry)
+            setIsAnonymous(pendingStory.isAnonymous)
+            setSelectedTags(pendingStory.selectedTags)
+            setCustomTags(pendingStory.customTags)
+
+            toast({
+              title: "Historia cargada",
+              description: "Se ha cargado tu historia pendiente",
+            })
+          }
         }
 
         // Limpiar la historia pendiente después de cargarla o si el usuario rechaza
@@ -109,6 +128,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
       console.log("Usuario autenticado con envío pendiente, procesando automáticamente...")
       handleSubmit(new Event("submit") as React.FormEvent)
       setPendingSubmission(false)
+      clearPendingSubmissionFlag()
     }
   }, [session, pendingSubmission])
 
@@ -179,6 +199,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
       // Marcar que hay una presentación pendiente
       setPendingSubmission(true)
+      setPendingSubmissionFlag(true)
       setShowLoginDialog(true)
       return
     }
@@ -208,6 +229,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
       // Limpiar cualquier historia pendiente después de un envío exitoso
       clearPendingStory()
+      clearPendingSubmissionFlag()
 
       // Mostrar mensaje de éxito
       setSubmitSuccess(true)
@@ -289,6 +311,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
     // pero cancelar la presentación pendiente automática
     if (!success) {
       setPendingSubmission(false)
+      clearPendingSubmissionFlag()
     }
     // Si fue exitoso, el useEffect se encargará de enviar el formulario
   }

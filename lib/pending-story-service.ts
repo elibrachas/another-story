@@ -13,6 +13,7 @@ export interface PendingStory {
 // Clave para almacenar en localStorage
 const PENDING_STORY_KEY = "pending_story"
 const PENDING_STORY_EMAIL_KEY = "pending_story_email"
+const PENDING_SUBMISSION_KEY = "pending_submission"
 
 // Guardar una historia pendiente
 export function savePendingStory(story: Omit<PendingStory, "createdAt">): void {
@@ -85,5 +86,36 @@ export function clearPendingStoryEmail(): void {
     localStorage.removeItem(PENDING_STORY_EMAIL_KEY)
   } catch (error) {
     console.error("Error al eliminar email de historia pendiente:", error)
+  }
+}
+
+// ----- Pending submission flag helpers -----
+
+export function setPendingSubmissionFlag(value: boolean): void {
+  try {
+    if (value) {
+      localStorage.setItem(PENDING_SUBMISSION_KEY, "true")
+    } else {
+      localStorage.removeItem(PENDING_SUBMISSION_KEY)
+    }
+  } catch (error) {
+    console.error("Error al establecer flag de envío pendiente:", error)
+  }
+}
+
+export function getPendingSubmissionFlag(): boolean {
+  try {
+    return localStorage.getItem(PENDING_SUBMISSION_KEY) === "true"
+  } catch (error) {
+    console.error("Error al obtener flag de envío pendiente:", error)
+    return false
+  }
+}
+
+export function clearPendingSubmissionFlag(): void {
+  try {
+    localStorage.removeItem(PENDING_SUBMISSION_KEY)
+  } catch (error) {
+    console.error("Error al limpiar flag de envío pendiente:", error)
   }
 }

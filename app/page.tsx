@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlusCircle, TagIcon } from "lucide-react"
 import Link from "next/link"
 import { TagBadge } from "@/components/tag-badge"
+import { PendingSubmissionRedirect } from "@/components/pending-submission-redirect"
 
 // Forzar que esta ruta sea dinámica para evitar errores con cookies
 export const dynamic = "force-dynamic"
@@ -21,6 +22,7 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
+      <PendingSubmissionRedirect />
       <section className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Crónicas Laborales</h1>
