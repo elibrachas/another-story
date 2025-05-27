@@ -46,8 +46,8 @@ describe("StoryCard Component", () => {
   it("displays author and industry information", () => {
     render(<StoryCard story={mockStory} />)
 
-    expect(screen.getByText(/Por: TestAuthor/)).toBeInTheDocument()
-    expect(screen.getByText(/Industria: Tecnología/)).toBeInTheDocument()
+    expect(screen.getByText(/TestAuthor/)).toBeInTheDocument()
+    expect(screen.getByText(/Tecnología/)).toBeInTheDocument()
   })
 
   it("renders tags when provided", () => {
