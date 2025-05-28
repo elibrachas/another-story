@@ -69,6 +69,14 @@ export default function Header() {
           <Link href="/sobre-nosotros" className="text-sm font-medium transition-colors hover:text-primary">
             Sobre nosotros
           </Link>
+          <Link
+            href="https://www.galernaweb.com/productos/renuncio-eliana-bracciaforte/?utm_source=cronicaslaborales&utm_medium=topmenu&utm_campaign=renuncio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium transition-colors hover:text-primary"
+          >
+            Mi libro: RENUNCIO
+          </Link>
           {session && (
             <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
               Panel
