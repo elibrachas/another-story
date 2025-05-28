@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/mode-toggle"
 import { LoginDialog } from "@/components/login-dialog"
+import { MobileNav } from "@/components/mobile-nav"
 import { useState, useEffect } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Shield } from "lucide-react"
@@ -51,16 +52,19 @@ export default function Header() {
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3">
-          <Image
-            src="/images/logo_cronicas.png"
-            alt="Crónicas Laborales Logo"
-            width={40}
-            height={40}
-            className="h-10 w-10"
-          />
-          <span className="font-bold text-xl hidden sm:inline">Crónicas Laborales</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <MobileNav session={session} isAdmin={isAdmin} />
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/images/logo_cronicas.png"
+              alt="Crónicas Laborales Logo"
+              width={40}
+              height={40}
+              className="h-10 w-10"
+            />
+            <span className="font-bold text-xl hidden sm:inline">Crónicas Laborales</span>
+          </Link>
+        </div>
 
         <nav className="hidden md:flex gap-6">
           <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
