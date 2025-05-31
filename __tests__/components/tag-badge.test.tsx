@@ -3,19 +3,20 @@ import { TagBadge } from "@/components/tag-badge"
 
 describe("TagBadge", () => {
   test("renderiza correctamente el nombre de la etiqueta", () => {
-    render(<TagBadge name="Acoso" />)
+    render(<TagBadge tag={{ id: "acoso", name: "Acoso" }} />)
     expect(screen.getByText("Acoso")).toBeInTheDocument()
   })
 
-  test("aplica la clase de tamaño correcta", () => {
-    const { container } = render(<TagBadge name="Discriminación" size="sm" />)
-    // Verificamos que el elemento tenga la clase de tamaño pequeño
-    expect(container.firstChild).toHaveClass("text-xs")
+  test("enlaza a la ruta correcta", () => {
+    render(<TagBadge tag={{ id: "discriminacion", name: "Discriminación" }} />)
+    const link = screen.getByRole("link")
+    expect(link).toHaveAttribute("href", "/tags/discriminacion")
   })
 
-  test("aplica la variante correcta", () => {
-    const { container } = render(<TagBadge name="Mobbing" variant="outline" />)
-    // Verificamos que el elemento tenga la clase de variante outline
-    expect(container.firstChild).toHaveClass("border")
+  test("aplica las clases de estilo predeterminadas", () => {
+    const { container } = render(<TagBadge tag="Mobbing" />)
+    const badge = container.querySelector("a > div")
+    expect(badge).toHaveClass("bg-purple-800")
+    expect(badge).toHaveClass("border-purple-700")
   })
 })
