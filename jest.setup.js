@@ -17,8 +17,6 @@ Object.defineProperty(window, "matchMedia", {
   })),
 })
 
-// Mock para Next.js router
-jest.mock("next/navigation", () => require("./__mocks__/next-navigation-mock.js"))
 
 // Mock para el proveedor de Supabase
 jest.mock("@/lib/supabase-provider", () => ({
