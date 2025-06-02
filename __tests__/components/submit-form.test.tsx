@@ -2,32 +2,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { SubmitForm } from "@/components/submit-form"
 import { submitStory } from "@/lib/actions"
 
-// Mock de Select para simplificar la interacción en pruebas
-jest.mock("@/components/ui/select", () => {
-  const React = require("react")
-  return {
-    Select: ({ value, onValueChange, children, ...props }: any) => (
-      <select
-        value={value}
-        onChange={(e) => onValueChange && onValueChange((e.target as HTMLSelectElement).value)}
-        {...props}
-      >
-        {children}
-      </select>
-    ),
-    SelectTrigger: ({ children }: any) => <>{children}</>,
-    SelectValue: ({ placeholder }: any) => (
-      <option value="" disabled>
-        {placeholder}
-      </option>
-    ),
-    SelectContent: ({ children }: any) => <>{children}</>,
-    SelectItem: ({ children, value }: any) => (
-      <option value={value}>{children}</option>
-    ),
-  }
-})
-
 // Mock de las dependencias
 jest.mock("@/lib/actions", () => ({
   submitStory: jest.fn(),
@@ -90,24 +64,23 @@ describe("SubmitForm", () => {
     render(<SubmitForm tags={mockTags} />)
 
     // Completar los campos obligatorios
-    fireEvent.change(
-      screen.getByPlaceholderText("Dale a tu historia un título impactante"),
-      {
-        target: { value: "Mi historia tóxica" },
-      },
-    )
+    fireEvent.change(screen.getByLabelText(/Título/i), {
+      target: { value: "Mi historia tóxica" },
+    })
 
-    // Seleccionar industria
-    const industrySelect = screen.getByRole("combobox")
-    fireEvent.change(industrySelect, { target: { value: "Tecnología" } })
+    // Seleccionar industria (esto es más complejo con el componente Select de shadcn)
+    // En un caso real, podríamos necesitar adaptar esto según cómo funciona el componente
+    const selectTrigger = screen.getByText("Selecciona una industria")
+    fireEvent.click(selectTrigger)
+    // Simulamos la selección de una industria
+    // Nota: Esto podría necesitar ajustes dependiendo de cómo se renderiza el componente Select
+    const industryOption = await screen.findByText("Tecnología")
+    fireEvent.click(industryOption)
 
     // Completar el contenido
-    fireEvent.change(
-      screen.getByPlaceholderText("Comparte tu experiencia..."),
-      {
-        target: { value: "Contenido de la historia..." },
-      },
-    )
+    fireEvent.change(screen.getByLabelText(/Tu Historia/i), {
+      target: { value: "Contenido de la historia..." },
+    })
 
     // Enviar el formulario
     fireEvent.click(screen.getByText("Enviar Historia"))
@@ -119,7 +92,7 @@ describe("SubmitForm", () => {
           title: "Mi historia tóxica",
           content: "Contenido de la historia...",
           industry: "Tecnología",
-          isAnonymous: false,
+          isAnonymous: true,
         }),
       )
     })

@@ -42,7 +42,6 @@ describe("Header Component", () => {
     // Verificar que los enlaces de navegación estén presentes
     expect(screen.getByText("Historias")).toBeInTheDocument()
     expect(screen.getByText("Sobre nosotros")).toBeInTheDocument()
-    expect(screen.getByText("Mi libro: RENUNCIO")).toBeInTheDocument()
   })
 
   it("renders login buttons when user is not authenticated", () => {

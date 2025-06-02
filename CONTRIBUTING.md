@@ -13,9 +13,9 @@ Thank you for considering contributing to **Another Story**!
 
 Tests are written with Jest. Run them with:
 
-```bash
+\`\`\`bash
 npx jest
-```
+\`\`\`
 
 If you add new features, please include appropriate tests under `__tests__/`.
 
@@ -30,4 +30,3 @@ Use clear, descriptive commit messages. Small, focused commits make reviewing ea
 3. The team will review your PR and provide feedback.
 
 We appreciate all contributions and improvements!
-
