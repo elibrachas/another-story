@@ -2,6 +2,25 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { SubmitForm } from "@/components/submit-form"
 import { submitStory } from "@/lib/actions"
 
+// Mock del componente Select de shadcn para pruebas
+jest.mock("@/components/ui/select", () => {
+  const React = require("react")
+  const SelectContext = React.createContext(null)
+  const Select = ({ onValueChange, children }: any) => (
+    <SelectContext.Provider value={onValueChange}>
+      <div>{children}</div>
+    </SelectContext.Provider>
+  )
+  const SelectTrigger = ({ children }: any) => <button>{children}</button>
+  const SelectValue = ({ placeholder }: any) => <span>{placeholder}</span>
+  const SelectContent = ({ children }: any) => <div>{children}</div>
+  const SelectItem = ({ children, value }: any) => {
+    const onValueChange = React.useContext(SelectContext)
+    return <div onClick={() => onValueChange?.(value)}>{children}</div>
+  }
+  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
+})
+
 // Mock de las dependencias
 jest.mock("@/lib/actions", () => ({
   submitStory: jest.fn(),
