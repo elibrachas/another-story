@@ -1,5 +1,3 @@
-const jest = require("jest-mock")
-
 module.exports = {
   useRouter: () => ({
     push: jest.fn(),
