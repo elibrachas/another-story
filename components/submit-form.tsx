@@ -355,7 +355,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <div className="space-y-2">
           <Label htmlFor="title" className={formErrors.title ? "text-red-500" : ""}>
             Título {formErrors.title && <span className="text-red-500">*</span>}
