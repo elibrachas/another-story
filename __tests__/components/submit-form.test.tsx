@@ -64,9 +64,12 @@ describe("SubmitForm", () => {
     render(<SubmitForm tags={mockTags} />)
 
     // Completar los campos obligatorios
-    fireEvent.change(screen.getByLabelText(/Título/i), {
-      target: { value: "Mi historia tóxica" },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText("Dale a tu historia un título impactante"),
+      {
+        target: { value: "Mi historia tóxica" },
+      },
+    )
 
     // Seleccionar industria (esto es más complejo con el componente Select de shadcn)
     // En un caso real, podríamos necesitar adaptar esto según cómo funciona el componente
@@ -78,9 +81,12 @@ describe("SubmitForm", () => {
     fireEvent.click(industryOption)
 
     // Completar el contenido
-    fireEvent.change(screen.getByLabelText(/Tu Historia/i), {
-      target: { value: "Contenido de la historia..." },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText("Comparte tu experiencia..."),
+      {
+        target: { value: "Contenido de la historia..." },
+      },
+    )
 
     // Enviar el formulario
     fireEvent.click(screen.getByText("Enviar Historia"))
