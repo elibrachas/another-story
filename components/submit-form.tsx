@@ -344,15 +344,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         </AlertDescription>
       </Alert>
 
-      <Alert variant="info" className="mb-6">
-        <Info className="h-4 w-4" />
-        <AlertTitle>Límite diario</AlertTitle>
-        <AlertDescription>
-          Los usuarios pueden publicar un máximo de 3 historias por día. Esta medida nos ayuda a mantener la calidad del
-          contenido.
-        </AlertDescription>
-      </Alert>
-
       {/* Mostrar el país detectado */}
       <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center">
         <MapPin className="h-5 w-5 mr-2 text-purple-500" />
