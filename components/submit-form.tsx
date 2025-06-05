@@ -132,6 +132,18 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
     }
   }, [session, pendingSubmission])
 
+  // Escuchar eventos de autenticación exitosos desde otras pestañas
+  useEffect(() => {
+    const handleAuthEvent = (e: StorageEvent) => {
+      if (e.key === "auth_success_event") {
+        router.refresh()
+      }
+    }
+
+    window.addEventListener("storage", handleAuthEvent)
+    return () => window.removeEventListener("storage", handleAuthEvent)
+  }, [router])
+
   // Ordenar las etiquetas por popularidad (simulado - en un sistema real, esto vendría de la base de datos)
   const sortedTags = [...tags].sort((a, b) => (b.count || 0) - (a.count || 0))
 
