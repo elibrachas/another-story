@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code")
   const error = requestUrl.searchParams.get("error")
   const errorDescription = requestUrl.searchParams.get("error_description")
+  const next = requestUrl.searchParams.get("next") || "/"
 
   // Si hay un error en la URL, redirigir a la página de error
   if (error) {
@@ -63,8 +64,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Redirigir a la página de autenticación con un parámetro de éxito
-    return NextResponse.redirect(`${requestUrl.origin}/auth?auth_success=true`)
+    // Redirigir al destino original o a la página principal por defecto
+    return NextResponse.redirect(`${requestUrl.origin}${next}`)
   } catch (error) {
     console.error("Error inesperado en callback:", error)
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)

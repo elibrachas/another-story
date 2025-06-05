@@ -25,10 +25,12 @@ export function AuthForm() {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true)
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
         },
       })
     } catch (error) {
@@ -47,10 +49,12 @@ export function AuthForm() {
 
     try {
       setIsLoading(true)
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           // Asegurarse de que se creen usuarios nuevos si no existen
           shouldCreateUser: true,
         },
@@ -94,10 +98,12 @@ export function AuthForm() {
   const handleResendLink = async () => {
     try {
       setIsLoading(true)
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           shouldCreateUser: true,
         },
       })
