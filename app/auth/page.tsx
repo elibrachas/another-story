@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AuthForm } from "@/components/auth-form"
 import { useSearchParams } from "next/navigation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -13,6 +14,7 @@ export default function AuthPage() {
   const errorDescription = searchParams.get("error_description")
   const message = searchParams.get("message")
   const success = searchParams.get("auth_success")
+  const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -48,8 +50,18 @@ export default function AuthPage() {
         description: "Has iniciado sesión correctamente.",
         variant: "default",
       })
+
+      // Notificar a otras pestañas que la autenticación fue exitosa
+      localStorage.setItem("auth_success_event", Date.now().toString())
+
+      // Redirigir al panel de control después de un breve retraso
+      const timer = setTimeout(() => {
+        router.replace("/dashboard")
+      }, 500)
+
+      return () => clearTimeout(timer)
     }
-  }, [error, errorDescription, message, success, toast])
+  }, [error, errorDescription, message, success, toast, router])
 
   return (
     <div className="container max-w-md mx-auto py-10">
