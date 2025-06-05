@@ -117,7 +117,7 @@ describe("SubmitForm", () => {
           title: "Mi historia tóxica",
           content: "Contenido de la historia...",
           industry: "Tecnología",
-          isAnonymous: true,
+          isAnonymous: false,
         }),
       )
     })
