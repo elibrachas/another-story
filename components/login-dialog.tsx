@@ -28,10 +28,12 @@ export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogP
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true)
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
         },
       })
       // No podemos llamar a onLoginSuccess aquí porque la redirección ocurre antes
@@ -53,10 +55,12 @@ export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogP
 
     setIsLoading(true)
     try {
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           shouldCreateUser: true,
         },
       })
@@ -98,10 +102,12 @@ export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogP
 
     setIsLoading(true)
     try {
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           shouldCreateUser: true,
         },
       })
