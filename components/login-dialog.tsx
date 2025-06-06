@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Mail, Loader2, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import { buildAuthCallbackUrl } from "@/lib/url-utils"
 
 interface LoginDialogProps {
   open: boolean
@@ -29,14 +30,23 @@ export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogP
     try {
       setIsLoading(true)
       const next = `${window.location.pathname}${window.location.search}`
-      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-      await supabase.auth.signInWithOAuth({
+      const redirectUrl = buildAuthCallbackUrl(next)
+
+      console.log("Iniciando sesión con Google desde dialog...")
+      console.log("URL de redirección:", redirectUrl)
+      console.log("Página actual:", next)
+
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: redirectUrl,
         },
       })
-      // No podemos llamar a onLoginSuccess aquí porque la redirección ocurre antes
+
+      if (error) {
+        console.error("Error al iniciar sesión con Google:", error)
+        throw error
+      }
     } catch (error) {
       console.error("Error al iniciar sesión con Google:", error)
       toast({
@@ -56,7 +66,12 @@ export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogP
     setIsLoading(true)
     try {
       const next = `${window.location.pathname}${window.location.search}`
-      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      const redirectUrl = buildAuthCallbackUrl(next)
+
+      console.log("Enviando magic link desde dialog...")
+      console.log("URL de redirección:", redirectUrl)
+      console.log("Email:", email)
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -103,7 +118,8 @@ export function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogP
     setIsLoading(true)
     try {
       const next = `${window.location.pathname}${window.location.search}`
-      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      const redirectUrl = buildAuthCallbackUrl(next)
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {

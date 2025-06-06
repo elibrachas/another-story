@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { User } from "@supabase/auth-js"
 import { clearAuthTokens, isTokenExpiringSoon } from "@/lib/auth-utils"
+import { buildAuthCallbackUrl } from "@/lib/url-utils"
 
 type AuthContextType = {
   user: User | null
@@ -141,22 +142,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase.auth])
 
   const signIn = async (provider: "google") => {
-    const next = `${window.location.pathname}${window.location.search}`
-    const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+    try {
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = buildAuthCallbackUrl(next)
 
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: redirectUrl,
-      },
-    })
+      console.log("Iniciando sesión con Google...")
+      console.log("URL de redirección:", redirectUrl)
+      console.log("Página actual:", next)
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: redirectUrl,
+        },
+      })
+
+      if (error) {
+        console.error("Error al iniciar sesión con Google:", error)
+        throw error
+      }
+    } catch (error) {
+      console.error("Error en signIn:", error)
+      throw error
+    }
   }
 
   // Actualizar también la función signInWithMagicLink para mantener consistencia
   const signInWithMagicLink = async (email: string) => {
     try {
       const next = `${window.location.pathname}${window.location.search}`
-      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      const redirectUrl = buildAuthCallbackUrl(next)
+
+      console.log("Enviando magic link...")
+      console.log("URL de redirección:", redirectUrl)
+      console.log("Email:", email)
 
       const { data, error } = await supabase.auth.signInWithOtp({
         email,

@@ -11,6 +11,13 @@ export async function GET(request: NextRequest) {
   const errorDescription = requestUrl.searchParams.get("error_description")
   const next = requestUrl.searchParams.get("next") || "/"
 
+  console.log("Callback recibido:")
+  console.log("- Code:", code ? "presente" : "ausente")
+  console.log("- Error:", error)
+  console.log("- Next:", next)
+  console.log("- Request URL:", requestUrl.toString())
+  console.log("- Origin:", requestUrl.origin)
+
   // Si hay un error en la URL, redirigir a la página de error
   if (error) {
     console.error(`Error en callback de autenticación: ${error} - ${errorDescription}`)
@@ -36,6 +43,8 @@ export async function GET(request: NextRequest) {
         `${requestUrl.origin}/auth?error=session_exchange&message=${encodeURIComponent(sessionError.message)}`,
       )
     }
+
+    console.log("Sesión creada exitosamente para usuario:", data?.session?.user?.id)
 
     // Verificar si el usuario ya tiene un perfil para evitar creaciones duplicadas
     if (data?.session?.user) {
@@ -80,8 +89,16 @@ export async function GET(request: NextRequest) {
       nextPath = "/"
     }
 
+    // Asegurar que la ruta comience con /
+    if (!nextPath.startsWith("/")) {
+      nextPath = "/" + nextPath
+    }
+
+    const finalRedirectUrl = `${requestUrl.origin}${nextPath}`
+    console.log("Redirigiendo a:", finalRedirectUrl)
+
     // Redirigir al destino original o a la página principal por defecto
-    return NextResponse.redirect(`${requestUrl.origin}${nextPath}`)
+    return NextResponse.redirect(finalRedirectUrl)
   } catch (error) {
     console.error("Error inesperado en callback:", error)
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)
