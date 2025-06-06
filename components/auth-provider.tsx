@@ -137,20 +137,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase.auth, refreshSession])
 
   const signIn = async (provider: "google") => {
+    const next = `${window.location.pathname}${window.location.search}`
+    const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: redirectUrl,
       },
     })
   }
 
+  // Actualizar también la función signInWithMagicLink para mantener consistencia
   const signInWithMagicLink = async (email: string) => {
     try {
+      const next = `${window.location.pathname}${window.location.search}`
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           // Asegurarse de que se creen usuarios nuevos si no existen
           shouldCreateUser: true,
         },
