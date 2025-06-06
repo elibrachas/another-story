@@ -25,6 +25,7 @@ export function AuthForm() {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true)
+      setIsCreatingProfile(true)
       const next = `${window.location.pathname}${window.location.search}`
       const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       await supabase.auth.signInWithOAuth({
@@ -34,6 +35,7 @@ export function AuthForm() {
         },
       })
     } catch (error) {
+      setIsCreatingProfile(false)
       toast({
         title: "Error",
         description: "Error al iniciar sesión con Google",
@@ -46,6 +48,17 @@ export function AuthForm() {
   const handleMagicLinkSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) return
+
+    // Validar formato de correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Formato inválido",
+        description: "Por favor, introduce una dirección de correo electrónico válida",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       setIsLoading(true)

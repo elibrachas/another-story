@@ -54,25 +54,37 @@ export async function createInitialProfile() {
     console.log("País del usuario:", country)
 
     // Crear el perfil inicial
-    console.log("Creando perfil inicial...")
-    const { data: newProfile, error } = await supabase
-      .from("profiles")
-      .insert({
-        id: userId,
-        username: username,
-        admin: false,
-        country: country, // Establecer el país del usuario
-      })
-      .select()
-      .single()
+    try {
+      console.log("Creando perfil inicial...")
+      const { data: newProfile, error } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          username: username,
+          admin: false,
+          country: country, // Establecer el país del usuario
+        })
+        .select()
+        .single()
 
-    if (error) {
-      console.error("Error al crear perfil inicial:", error)
-      return { success: false, error: error.message }
+      if (error) {
+        // Si el error es de clave duplicada, significa que el perfil ya fue creado
+        if (error.code === "23505") {
+          console.log("El perfil ya fue creado por otra solicitud")
+          const { data: existingProfile } = await supabase.from("profiles").select("*").eq("id", userId).single()
+          return { success: true, profile: existingProfile, message: "Profile already exists" }
+        }
+
+        console.error("Error al crear perfil inicial:", error)
+        return { success: false, error: error.message }
+      }
+
+      console.log("Perfil creado exitosamente:", newProfile)
+      return { success: true, profile: newProfile }
+    } catch (error) {
+      console.error("Error en la creación del perfil:", error)
+      return { success: false, error: error instanceof Error ? error.message : "Error desconocido" }
     }
-
-    console.log("Perfil creado exitosamente:", newProfile)
-    return { success: true, profile: newProfile }
   } catch (error) {
     console.error("Error en createInitialProfile:", error)
     return { success: false, error: error instanceof Error ? error.message : "Error desconocido" }
@@ -465,7 +477,19 @@ export async function updateProfile({
 
     if (error) {
       console.error("Error updating profile:", error)
-      return { success: false, error: error.message }
+
+      // Proporcionar mensajes de error más amigables
+      let errorMessage = "No se pudo actualizar el perfil"
+
+      if (error.code === "23505") {
+        errorMessage = "Ya existe un usuario con ese nombre"
+      } else if (error.code === "23514") {
+        errorMessage = "Uno de los campos contiene un valor no permitido"
+      } else if (error.message?.includes("violates check constraint")) {
+        errorMessage = "Uno de los campos no cumple con las restricciones requeridas"
+      }
+
+      return { success: false, error: errorMessage }
     }
 
     revalidatePath("/profile")

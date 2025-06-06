@@ -22,6 +22,13 @@ export async function middleware(req: NextRequest) {
 
       if (refreshResult.error) {
         console.error("Error al refrescar la sesión en middleware:", refreshResult.error)
+
+        // Limpiar cookies de sesión inválidas para evitar bucles de error
+        if (refreshResult.error.status === 401 || refreshResult.error.message?.includes("token")) {
+          res.cookies.delete("supabase-auth-token")
+          res.cookies.delete("sb-access-token")
+          res.cookies.delete("sb-refresh-token")
+        }
       }
     }
 

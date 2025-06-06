@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase.auth, refreshSession])
 
+  // Separar la obtención inicial del usuario y la suscripción a cambios
   useEffect(() => {
     const getUser = async () => {
       try {
@@ -110,31 +111,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         setLoading(false)
       }
-
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Evento de autenticación:", event)
-
-        if (event === "TOKEN_REFRESHED") {
-          console.log("Token refrescado exitosamente")
-        } else if (event === "SIGNED_OUT") {
-          // Limpiar cualquier dato local al cerrar sesión
-          clearAuthTokens()
-        } else if (event === "SIGNED_IN") {
-          console.log("Usuario ha iniciado sesión")
-        } else if (event === "USER_UPDATED") {
-          console.log("Datos de usuario actualizados")
-        }
-
-        setUser(session?.user || null)
-      })
-
-      return () => subscription.unsubscribe()
     }
 
     getUser()
   }, [supabase.auth, refreshSession])
+
+  // Suscripción a cambios de autenticación en un useEffect separado
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Evento de autenticación:", event)
+
+      if (event === "TOKEN_REFRESHED") {
+        console.log("Token refrescado exitosamente")
+      } else if (event === "SIGNED_OUT") {
+        // Limpiar cualquier dato local al cerrar sesión
+        clearAuthTokens()
+      } else if (event === "SIGNED_IN") {
+        console.log("Usuario ha iniciado sesión")
+      } else if (event === "USER_UPDATED") {
+        console.log("Datos de usuario actualizados")
+      }
+
+      setUser(session?.user || null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
 
   const signIn = async (provider: "google") => {
     const next = `${window.location.pathname}${window.location.search}`

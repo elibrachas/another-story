@@ -55,6 +55,13 @@ export async function GET(request: NextRequest) {
           console.log("Creando perfil inicial desde callback...")
           const result = await createInitialProfile()
           console.log("Resultado de createInitialProfile:", result)
+
+          if (!result.success) {
+            console.error("Error al crear perfil inicial:", result.error)
+            return NextResponse.redirect(
+              `${requestUrl.origin}/auth?error=profile_creation&message=${encodeURIComponent(result.error || "Error al crear perfil")}`,
+            )
+          }
         } else {
           console.log("Perfil ya existe, no es necesario crearlo")
         }
@@ -64,8 +71,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Validar el parámetro next antes de usarlo para la redirección
+    let nextPath = next || "/"
+
+    // Asegurarse de que next es una ruta relativa y no una URL externa
+    if (nextPath.startsWith("http") || nextPath.startsWith("//")) {
+      console.warn("Intento de redirección a URL externa detectado:", nextPath)
+      nextPath = "/"
+    }
+
     // Redirigir al destino original o a la página principal por defecto
-    return NextResponse.redirect(`${requestUrl.origin}${next}`)
+    return NextResponse.redirect(`${requestUrl.origin}${nextPath}`)
   } catch (error) {
     console.error("Error inesperado en callback:", error)
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)
