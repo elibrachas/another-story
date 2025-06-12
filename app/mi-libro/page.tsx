@@ -185,7 +185,13 @@ export default function MiLibroPage() {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="#" target="_blank" rel="noopener noreferrer">
+                      <Link
+                        href={addUtmParams(
+                          "https://books.apple.com/us/book/renuncio/id6746873684"
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         📕 Apple Books
                         <ExternalLink className="ml-2 h-4 w-4" />
                       </Link>
