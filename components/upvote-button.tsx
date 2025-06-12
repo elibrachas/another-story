@@ -4,6 +4,9 @@ import { useState } from "react"
 import { ThumbsUp } from "lucide-react"
 import { upvoteStory } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
+import { LoginDialog } from "@/components/login-dialog"
+import { useSupabase } from "@/lib/supabase-provider"
+import { savePendingVote } from "@/lib/pending-vote-service"
 
 interface UpvoteButtonProps {
   storyId: string
@@ -15,8 +18,16 @@ export function UpvoteButton({ storyId, initialUpvotes }: UpvoteButtonProps) {
   const [isUpvoting, setIsUpvoting] = useState(false)
   const [hasUpvoted, setHasUpvoted] = useState(false)
   const { toast } = useToast()
+  const { session } = useSupabase()
+  const [showLoginDialog, setShowLoginDialog] = useState(false)
 
   const handleUpvote = async () => {
+    if (!session) {
+      savePendingVote({ type: "story", id: storyId })
+      setShowLoginDialog(true)
+      return
+    }
+
     if (hasUpvoted || isUpvoting) return
 
     setIsUpvoting(true)
@@ -46,16 +57,20 @@ export function UpvoteButton({ storyId, initialUpvotes }: UpvoteButtonProps) {
   }
 
   return (
-    <button
-      onClick={handleUpvote}
-      disabled={isUpvoting || hasUpvoted}
-      className={`flex items-center gap-1 text-sm ${
-        hasUpvoted ? "text-purple-600" : "text-gray-500 hover:text-gray-700"
-      } transition-colors disabled:opacity-70`}
-      aria-label={hasUpvoted ? "Ya has votado" : "Votar por esta historia"}
-    >
-      <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? "fill-purple-600" : ""}`} />
-      <span>{upvotes}</span>
-    </button>
+    <>
+      <button
+        onClick={handleUpvote}
+        disabled={isUpvoting || hasUpvoted}
+        className={`flex items-center gap-1 text-sm ${
+          hasUpvoted ? "text-purple-600" : "text-gray-500 hover:text-gray-700"
+        } transition-colors disabled:opacity-70`}
+        aria-label={hasUpvoted ? "Ya has votado" : "Votar por esta historia"}
+      >
+        <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? "fill-purple-600" : ""}`} />
+        <span>{upvotes}</span>
+      </button>
+
+      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+    </>
   )
 }

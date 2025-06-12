@@ -7,6 +7,7 @@ import { LoginDialog } from "@/components/login-dialog"
 import { upvoteComment } from "@/lib/actions"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
+import { savePendingVote } from "@/lib/pending-vote-service"
 
 export function CommentUpvoteButton({
   commentId,
@@ -25,6 +26,7 @@ export function CommentUpvoteButton({
 
   const handleUpvote = async () => {
     if (!session) {
+      savePendingVote({ type: "comment", id: commentId, storyId })
       setShowLoginDialog(true)
       return
     }

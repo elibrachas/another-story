@@ -9,6 +9,7 @@ import Header from "@/components/header"
 import { Footer } from "@/components/footer"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
+import { PendingVoteProcessor } from "@/components/pending-vote-processor"
 import Script from "next/script"
 // Importar viewport y themeColor desde metadata-config
 import { defaultMetadata, viewport, themeColor } from "./metadata-config"
@@ -52,6 +53,7 @@ export default function RootLayout({
                 <Footer />
               </div>
               <CookieConsent />
+              <PendingVoteProcessor />
               <Toaster />
             </ThemeProvider>
           </AuthProvider>
