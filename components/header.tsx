@@ -69,6 +69,9 @@ export default function Header() {
           <Link href="/sobre-nosotros" className="text-sm font-medium transition-colors hover:text-primary">
             Sobre nosotros
           </Link>
+          <Link href="/mi-libro" className="text-sm font-medium transition-colors hover:text-primary">
+            Mi libro
+          </Link>
           {session && (
             <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
               Panel
