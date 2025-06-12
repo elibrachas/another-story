@@ -2,36 +2,81 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { LoginDialog } from "@/components/login-dialog"
 import { submitComment } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
+import {
+  savePendingComment,
+  getPendingComment,
+  clearPendingComment,
+  setPendingCommentSubmissionFlag,
+  getPendingCommentSubmissionFlag,
+  clearPendingCommentSubmissionFlag,
+} from "@/lib/pending-comment-service"
 
 export function CommentForm({ storyId }: { storyId: string }) {
   const [content, setContent] = useState("")
   const [isAnonymous, setIsAnonymous] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const [pendingSubmission, setPendingSubmission] = useState(false)
   const { session } = useSupabase()
   const { toast } = useToast()
 
+  // Cargar comentario pendiente cuando el usuario se autentica
+  useEffect(() => {
+    if (session) {
+      const pending = getPendingComment()
+      if (pending && pending.storyId === storyId) {
+        const autoSubmit = getPendingCommentSubmissionFlag()
+        setContent(pending.content)
+        setIsAnonymous(pending.isAnonymous)
+
+        if (autoSubmit) {
+          setPendingSubmission(true)
+        } else {
+          const confirmLoad = window.confirm(
+            "Encontramos un comentario sin enviar. ¿Deseas cargarlo?",
+          )
+          if (!confirmLoad) {
+            setContent("")
+          }
+        }
+
+        clearPendingComment()
+      }
+    }
+  }, [session, storyId])
+
+  // Enviar automáticamente si se indicó antes de iniciar sesión
+  useEffect(() => {
+    if (session && pendingSubmission) {
+      handleSubmit(new Event("submit") as React.FormEvent)
+      setPendingSubmission(false)
+      clearPendingCommentSubmissionFlag()
+    }
+  }, [session, pendingSubmission])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!session) {
-      setShowLoginDialog(true)
-      return
-    }
-
     if (!content) {
       toast({
         title: "Comentario vacío",
         description: "Por favor escribe algo antes de enviar",
         variant: "destructive",
       })
+      return
+    }
+
+    if (!session) {
+      savePendingComment({ storyId, content, isAnonymous })
+      setPendingSubmission(true)
+      setPendingCommentSubmissionFlag(true)
+      setShowLoginDialog(true)
       return
     }
 
