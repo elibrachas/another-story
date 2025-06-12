@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ExternalLink, BookOpen, Globe, Smartphone } from "lucide-react"
+import { addUtmParams } from "@/lib/utm"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -90,7 +91,9 @@ export default function MiLibroPage() {
                   <div className="space-y-3 flex-grow">
                     <Button asChild className="w-full bg-orange-600 hover:bg-orange-700">
                       <Link
-                        href="https://www.galernaweb.com/productos/renuncio-eliana-bracciaforte/"
+                        href={addUtmParams(
+                          "https://www.galernaweb.com/productos/renuncio-eliana-bracciaforte/"
+                        )}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -100,14 +103,20 @@ export default function MiLibroPage() {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="https://cuspide.com/producto/renuncio/" target="_blank" rel="noopener noreferrer">
+                      <Link
+                        href={addUtmParams("https://cuspide.com/producto/renuncio/")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         🛍️ Cúspide
                         <ExternalLink className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
                     <Button asChild variant="outline" className="w-full">
                       <Link
-                        href="https://www.yenny-elateneo.com/productos/renuncio/"
+                        href={addUtmParams(
+                          "https://www.yenny-elateneo.com/productos/renuncio/"
+                        )}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -129,7 +138,9 @@ export default function MiLibroPage() {
                   <div className="space-y-3 flex-grow">
                     <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
                       <Link
-                        href="https://www.buscalibre.com.ar/libro-renuncio/9786316632524/p/64318014"
+                        href={addUtmParams(
+                          "https://www.buscalibre.com.ar/libro-renuncio/9786316632524/p/64318014"
+                        )}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -151,7 +162,9 @@ export default function MiLibroPage() {
                   <div className="space-y-3 flex-grow">
                     <Button asChild className="w-full bg-purple-600 hover:bg-purple-700">
                       <Link
-                        href="https://www.amazon.com/Renuncio-Cambiar-trabajo-recuperar-Spanish-ebook/dp/B0FC364QY4/"
+                        href={addUtmParams(
+                          "https://www.amazon.com/Renuncio-Cambiar-trabajo-recuperar-Spanish-ebook/dp/B0FC364QY4/"
+                        )}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -161,7 +174,9 @@ export default function MiLibroPage() {
                     </Button>
                     <Button asChild variant="outline" className="w-full">
                       <Link
-                        href="https://books.google.com.ar/books?id=A6xjEQAAQBAJ&newbks=0&lpg=PT29&dq=renuncio%20cambiar%20de%20trabajo%20y%20recuperar%20tu%20vida&pg=PA1#v=onepage&q&f=false"
+                        href={addUtmParams(
+                          "https://books.google.com.ar/books?id=A6xjEQAAQBAJ&newbks=0&lpg=PT29&dq=renuncio%20cambiar%20de%20trabajo%20y%20recuperar%20tu%20vida&pg=PA1#v=onepage&q&f=false"
+                        )}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -235,7 +250,9 @@ export default function MiLibroPage() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button asChild size="lg" className="bg-white text-orange-600 hover:bg-gray-100">
                     <Link
-                      href="https://www.galernaweb.com/productos/renuncio-eliana-bracciaforte/"
+                      href={addUtmParams(
+                        "https://www.galernaweb.com/productos/renuncio-eliana-bracciaforte/"
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -246,7 +263,9 @@ export default function MiLibroPage() {
                   </Button>
                   <Button asChild size="lg" className="bg-white text-purple-600 hover:bg-gray-100">
                     <Link
-                      href="https://www.amazon.com/Renuncio-Cambiar-trabajo-recuperar-Spanish-ebook/dp/B0FC364QY4/"
+                      href={addUtmParams(
+                        "https://www.amazon.com/Renuncio-Cambiar-trabajo-recuperar-Spanish-ebook/dp/B0FC364QY4/"
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
