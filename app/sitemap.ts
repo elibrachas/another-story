@@ -53,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from("stories")
       .select("id, created_at") // Solo seleccionamos id y created_at
       .eq("published", true)
+      .eq("is_private", false)
       .order("created_at", { ascending: false })
 
     if (storiesError) {

@@ -39,6 +39,7 @@ export default function SearchPage() {
   `)
           .or(`title.ilike.%${query}%, content.ilike.%${query}%`)
           .eq("published", true)
+          .eq("is_private", false)
           .order("created_at", { ascending: false })
 
         if (error) {

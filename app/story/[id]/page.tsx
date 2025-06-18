@@ -30,6 +30,7 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
       )
       .eq("id", params.id)
       .eq("published", true)
+      .eq("is_private", false)
       .single()
 
     if (error || !story) {
