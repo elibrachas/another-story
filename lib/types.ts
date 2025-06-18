@@ -9,6 +9,7 @@ export type Story = {
   upvotes: number
   created_at: string
   published: boolean
+  is_private?: boolean
   user_id?: string
   tags?: Tag[]
   country?: string // Añadimos el país a las historias

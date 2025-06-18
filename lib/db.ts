@@ -29,6 +29,7 @@ export const migrationFiles = {
   rlsPolicies: "/db/migrations/002-rls-policies.sql",
   upvoteSystem: "/db/migrations/003-upvote-system.sql",
   adminFunctions: "/db/migrations/004-admin-functions.sql",
+  privateStories: "/db/migrations/005-private-stories.sql",
 }
 
 // Exportar funciones específicas para diferentes dominios
