@@ -1,20 +1,22 @@
 import { submitStory, upvoteStory, submitComment } from "@/lib/actions"
 
 // Mock de createServerActionClient
-jest.mock("@supabase/auth-helpers-nextjs", () => ({
-  createServerActionClient: jest.fn(() => ({
-    auth: {
-      getSession: jest.fn().mockResolvedValue({
-        data: {
-          session: {
-            user: {
-              id: "test-user-id",
+jest.mock(
+  "@supabase/auth-helpers-nextjs",
+  () => ({
+    createServerActionClient: jest.fn(() => ({
+      auth: {
+        getSession: jest.fn().mockResolvedValue({
+          data: {
+            session: {
+              user: {
+                id: "test-user-id",
+              },
             },
           },
-        },
-      }),
-    },
-    from: jest.fn().mockImplementation((table) => ({
+        }),
+      },
+      from: jest.fn().mockImplementation((table) => ({
       select: jest.fn().mockReturnThis(),
       insert: jest.fn().mockReturnThis(),
       update: jest.fn().mockReturnThis(),
@@ -30,7 +32,8 @@ jest.mock("@supabase/auth-helpers-nextjs", () => ({
       maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     })),
   })),
-}))
+  { virtual: true }
+)
 
 // Mock de next/cache
 jest.mock("next/cache", () => ({
