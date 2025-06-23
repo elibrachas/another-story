@@ -14,6 +14,7 @@ const customJestConfig = {
     "^@/(.*)$": "<rootDir>/$1",
     // Mocks para dependencias problemáticas
     "^class-variance-authority$": "<rootDir>/__mocks__/cva-mock.js",
+    "^clsx$": "<rootDir>/__mocks__/clsx-mock.js",
     "^@radix-ui/(.*)$": "<rootDir>/__mocks__/radix-mock.js",
     "^tailwindcss-animate$": "<rootDir>/__mocks__/tailwindcss-animate-mock.js",
     "^next/navigation$": "<rootDir>/__mocks__/next-navigation-mock.js",
