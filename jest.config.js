@@ -18,6 +18,7 @@ const customJestConfig = {
     "^tailwindcss-animate$": "<rootDir>/__mocks__/tailwindcss-animate-mock.js",
     "^next/navigation$": "<rootDir>/__mocks__/next-navigation-mock.js",
     "^lucide-react$": "<rootDir>/__mocks__/lucide-react-mock.js",
+    "^next-themes$": "<rootDir>/__mocks__/next-themes-mock.js",
   },
   // Solo ejecutar pruebas en el directorio __tests__
   testMatch: ["**/__tests__/**/*.test.[jt]s?(x)"],
