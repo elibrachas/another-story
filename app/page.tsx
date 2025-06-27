@@ -8,13 +8,11 @@ import Link from "next/link"
 import { TagBadge } from "@/components/tag-badge"
 import { PendingSubmissionRedirect } from "@/components/pending-submission-redirect"
 
-// Forzar que esta ruta sea dinámica para evitar errores con cookies
-export const dynamic = "force-dynamic"
+export const revalidate = 60 // Revalidate every minute
 
 export default async function Home() {
-  // Obtener historias y etiquetas
-  const stories = await getStories()
-  const tags = await getAllTags()
+  // Obtener historias y etiquetas de forma concurrente
+  const [stories, tags] = await Promise.all([getStories(), getAllTags()])
 
   // Obtener conteo de comentarios para todas las historias
   const storyIds = stories.map((story) => story.id)
