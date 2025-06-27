@@ -4,7 +4,12 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/mode-toggle"
-import { LoginDialog } from "@/components/login-dialog"
+import dynamic from "next/dynamic"
+
+const LoginDialog = dynamic(
+  () => import("@/components/login-dialog").then((m) => m.LoginDialog),
+  { loading: () => null }
+)
 import { useState, useEffect } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Shield } from "lucide-react"

@@ -3,7 +3,12 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp } from "lucide-react"
-import { LoginDialog } from "@/components/login-dialog"
+import dynamic from "next/dynamic"
+
+const LoginDialog = dynamic(
+  () => import("@/components/login-dialog").then((m) => m.LoginDialog),
+  { loading: () => null }
+)
 import { upvoteComment } from "@/lib/actions"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
