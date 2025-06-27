@@ -7,17 +7,7 @@ jest.mock("@/lib/actions", () => ({
   upvoteStory: jest.fn(),
 }))
 
-jest.mock("@/lib/supabase-provider", () => ({
-  useSupabase: () => ({
-    session: { user: { id: "test-user-id" } },
-  }),
-}))
-
-jest.mock("@/components/login-dialog", () => ({
-  LoginDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="login-dialog" data-open={open} />
-  ),
-}))
+// No se requiere mock adicional para localStorage o sesión
 
 describe("UpvoteButton Component", () => {
   const mockStoryId = "story-123"

@@ -152,7 +152,6 @@ export async function submitStory({
   content,
   industry,
   isAnonymous,
-  isPrivate,
   tags,
   customTags,
 }: {
@@ -160,7 +159,6 @@ export async function submitStory({
   content: string
   industry: string
   isAnonymous: boolean
-  isPrivate: boolean
   tags?: string[]
   customTags?: string[]
 }) {
@@ -203,7 +201,6 @@ export async function submitStory({
         user_id: userId,
         published: false, // Las historias se envían como no publicadas por defecto
         country: country, // Incluir el país del usuario
-        is_private: isPrivate,
       })
       .select()
       .single()

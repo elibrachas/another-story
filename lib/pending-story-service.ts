@@ -4,7 +4,6 @@ export interface PendingStory {
   content: string
   industry: string
   isAnonymous: boolean
-  isPrivate: boolean
   selectedTags: string[]
   customTags: string[]
   createdAt: number // Timestamp para saber cuándo se creó

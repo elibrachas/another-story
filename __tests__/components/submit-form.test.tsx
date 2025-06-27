@@ -111,14 +111,13 @@ describe("SubmitForm", () => {
     fireEvent.click(screen.getByText("Enviar Historia"))
 
     // Verificar que se llamó a submitStory con los parámetros correctos
-      await waitFor(() => {
-        expect(submitStory).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: "Mi historia tóxica",
-            content: "Contenido de la historia...",
-            industry: "Tecnología",
+    await waitFor(() => {
+      expect(submitStory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Mi historia tóxica",
+          content: "Contenido de la historia...",
+          industry: "Tecnología",
           isAnonymous: false,
-          isPrivate: false,
         }),
       )
     })

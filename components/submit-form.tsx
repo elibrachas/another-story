@@ -9,12 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
-import dynamic from "next/dynamic"
-
-const LoginDialog = dynamic(
-  () => import("@/components/login-dialog").then((m) => m.LoginDialog),
-  { loading: () => null }
-)
+import { LoginDialog } from "@/components/login-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { submitStory } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
@@ -52,7 +47,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
   const [content, setContent] = useState("")
   const [industry, setIndustry] = useState("")
   const [isAnonymous, setIsAnonymous] = useState(false) // Cambiado a false por defecto
-  const [isPrivate, setIsPrivate] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [customTags, setCustomTags] = useState<string[]>([])
   const [newTagInput, setNewTagInput] = useState("")
@@ -95,7 +89,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
           setContent(pendingStory.content)
           setIndustry(pendingStory.industry)
           setIsAnonymous(pendingStory.isAnonymous)
-          setIsPrivate(pendingStory.isPrivate)
           setSelectedTags(pendingStory.selectedTags)
           setCustomTags(pendingStory.customTags)
 
@@ -112,7 +105,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
             setContent(pendingStory.content)
             setIndustry(pendingStory.industry)
             setIsAnonymous(pendingStory.isAnonymous)
-            setIsPrivate(pendingStory.isPrivate)
             setSelectedTags(pendingStory.selectedTags)
             setCustomTags(pendingStory.customTags)
 
@@ -213,7 +205,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         content,
         industry,
         isAnonymous,
-        isPrivate,
         selectedTags,
         customTags,
       })
@@ -233,7 +224,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         content,
         industry,
         isAnonymous,
-        isPrivate,
         tags: selectedTags,
         customTags,
       })
@@ -357,16 +347,14 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
 
   return (
     <>
-      {!isPrivate && (
-        <Alert variant="warning" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Protege tu privacidad</AlertTitle>
-          <AlertDescription>
-            Para proteger tu identidad, te recomendamos evitar incluir detalles que puedan identificarte a ti o a tu lugar
-            de trabajo.
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert variant="warning" className="mb-6">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Protege tu privacidad</AlertTitle>
+        <AlertDescription>
+          Para proteger tu identidad, te recomendamos evitar incluir detalles que puedan identificarte a ti o a tu lugar
+          de trabajo.
+        </AlertDescription>
+      </Alert>
 
       {/* Mostrar el país detectado */}
       <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center">
@@ -380,22 +368,6 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-        <div className="space-y-2">
-          <Label htmlFor="visibility">Compartir con</Label>
-          <Select
-            value={isPrivate ? "private" : "public"}
-            onValueChange={(value) => setIsPrivate(value === "private")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Elige una opción" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="public">La comunidad</SelectItem>
-              <SelectItem value="private">Solo con Eliana</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="space-y-2">
           <Label htmlFor="title" className={formErrors.title ? "text-red-500" : ""}>
             Título {formErrors.title && <span className="text-red-500">*</span>}

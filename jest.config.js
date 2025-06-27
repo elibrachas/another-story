@@ -14,15 +14,10 @@ const customJestConfig = {
     "^@/(.*)$": "<rootDir>/$1",
     // Mocks para dependencias problemáticas
     "^class-variance-authority$": "<rootDir>/__mocks__/cva-mock.js",
-    "^clsx$": "<rootDir>/__mocks__/clsx-mock.js",
     "^@radix-ui/(.*)$": "<rootDir>/__mocks__/radix-mock.js",
     "^tailwindcss-animate$": "<rootDir>/__mocks__/tailwindcss-animate-mock.js",
     "^next/navigation$": "<rootDir>/__mocks__/next-navigation-mock.js",
     "^lucide-react$": "<rootDir>/__mocks__/lucide-react-mock.js",
-    "^next-themes$": "<rootDir>/__mocks__/next-themes-mock.js",
-    "^@supabase/auth-helpers-nextjs$": "<rootDir>/__mocks__/supabase-auth-helpers-nextjs-mock.js",
-    "^date-fns$": "<rootDir>/__mocks__/date-fns-mock.js",
-    "^date-fns/locale$": "<rootDir>/__mocks__/date-fns-locale-mock.js",
   },
   // Solo ejecutar pruebas en el directorio __tests__
   testMatch: ["**/__tests__/**/*.test.[jt]s?(x)"],

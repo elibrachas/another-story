@@ -90,7 +90,6 @@ export async function getStoriesClient() {
             .from("stories")
             .select("*")
             .eq("published", true)
-            .eq("is_private", false)
             .order("created_at", { ascending: false })
 
           if (error) {
@@ -228,9 +227,8 @@ export async function getAllTagsClient() {
       // y luego calcular los recuentos en memoria
       const { data: allStoryTags, error: storyTagsError } = await supabase
         .from("story_tags")
-        .select("tag_id, story_id, stories!inner(published, is_private)")
+        .select("tag_id, story_id, stories!inner(published)")
         .eq("stories.published", true)
-        .eq("stories.is_private", false)
 
       if (storyTagsError) {
         console.error("Error al obtener story_tags:", storyTagsError)
@@ -293,7 +291,6 @@ export async function getStoriesByTagClient(tagId: string) {
         .select("*")
         .in("id", storyIds)
         .eq("published", true)
-        .eq("is_private", false)
         .order("created_at", { ascending: false })
 
       if (storiesError) {

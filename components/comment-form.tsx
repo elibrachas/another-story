@@ -6,68 +6,32 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
-import dynamic from "next/dynamic"
-
-const LoginDialog = dynamic(
-  () => import("@/components/login-dialog").then((m) => m.LoginDialog),
-  { loading: () => null }
-)
+import { LoginDialog } from "@/components/login-dialog"
 import { submitComment } from "@/lib/actions"
 import { useSupabase } from "@/lib/supabase-provider"
-import {
-  savePendingComment,
-  getPendingComment,
-  clearPendingComment,
-  setPendingCommentSubmissionFlag,
-  getPendingCommentSubmissionFlag,
-  clearPendingCommentSubmissionFlag,
-} from "@/lib/pending-comment-service"
+import { savePendingComment, getPendingComment, clearPendingComment } from "@/lib/pending-comment-service"
 
 export function CommentForm({ storyId }: { storyId: string }) {
   const [content, setContent] = useState("")
   const [isAnonymous, setIsAnonymous] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showLoginDialog, setShowLoginDialog] = useState(false)
-  const [pendingSubmission, setPendingSubmission] = useState(false)
   const { session } = useSupabase()
   const { toast } = useToast()
 
-  // Cargar comentario pendiente cuando el usuario se autentica
+  // Restaurar comentario pendiente al cargar el componente
   useEffect(() => {
-    if (session) {
-      const pending = getPendingComment()
-      if (pending && pending.storyId === storyId) {
-        const autoSubmit = getPendingCommentSubmissionFlag()
-        setContent(pending.content)
-        setIsAnonymous(pending.isAnonymous)
-
-        if (autoSubmit) {
-          setPendingSubmission(true)
-        } else {
-          const confirmLoad = window.confirm(
-            "Encontramos un comentario sin enviar. ¿Deseas cargarlo?",
-          )
-          if (!confirmLoad) {
-            setContent("")
-          }
-        }
-
-        clearPendingComment()
-      }
+    const pendingComment = getPendingComment()
+    if (pendingComment && pendingComment.storyId === storyId) {
+      setContent(pendingComment.content)
+      setIsAnonymous(pendingComment.isAnonymous)
+      console.log("Comentario pendiente restaurado")
     }
-  }, [session, storyId])
-
-  // Enviar automáticamente si se indicó antes de iniciar sesión
-  useEffect(() => {
-    if (session && pendingSubmission) {
-      handleSubmit(new Event("submit") as React.FormEvent)
-      setPendingSubmission(false)
-      clearPendingCommentSubmissionFlag()
-    }
-  }, [session, pendingSubmission])
+  }, [storyId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!content) {
       toast({
         title: "Comentario vacío",
@@ -78,9 +42,13 @@ export function CommentForm({ storyId }: { storyId: string }) {
     }
 
     if (!session) {
-      savePendingComment({ storyId, content, isAnonymous })
-      setPendingSubmission(true)
-      setPendingCommentSubmissionFlag(true)
+      // Guardar el comentario antes de mostrar el diálogo de login
+      savePendingComment({
+        storyId,
+        content,
+        isAnonymous,
+      })
+
       setShowLoginDialog(true)
       return
     }
@@ -88,17 +56,27 @@ export function CommentForm({ storyId }: { storyId: string }) {
     try {
       setIsSubmitting(true)
 
-      await submitComment({
+      const result = await submitComment({
         storyId,
         content,
         isAnonymous,
       })
 
-      setContent("")
-      toast({
-        title: "Comentario añadido",
-        description: "Tu comentario ha sido publicado",
-      })
+      if (result.success) {
+        setContent("")
+        // Limpiar cualquier comentario pendiente si la publicación fue exitosa
+        clearPendingComment()
+        toast({
+          title: "Comentario añadido",
+          description: "Tu comentario ha sido publicado",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Error al publicar tu comentario",
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error",

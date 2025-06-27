@@ -1,36 +1,30 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
+import Script from "next/script"
+
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/lib/supabase-provider"
-import { AuthProvider } from "@/components/auth-provider" // Asegurarnos de que se importa
+import { AuthProvider } from "@/components/auth-provider"
 import Header from "@/components/header"
 import { Footer } from "@/components/footer"
-import "./globals.css"
-import dynamic from "next/dynamic"
+import { CookieConsent } from "@/components/cookie-consent"
+import { PendingCommentHandler } from "@/components/pending-comment-handler"
+import { PendingSubmissionRedirect } from "@/components/pending-submission-redirect"
+import { PendingVoteProcessor } from "@/components/pending-vote-processor"
 
-const CookieConsent = dynamic(
-  () => import("@/components/cookie-consent").then((m) => m.CookieConsent),
-  { ssr: false, loading: () => null }
-)
-const PendingVoteProcessor = dynamic(
-  () =>
-    import("@/components/pending-vote-processor").then(
-      (m) => m.PendingVoteProcessor,
-    ),
-  { ssr: false, loading: () => null }
-)
-import Script from "next/script"
-// Importar viewport y themeColor desde metadata-config
-import { defaultMetadata, viewport, themeColor } from "./metadata-config"
+import "./globals.css"
+import { defaultMetadata, viewport as defaultViewport, themeColor } from "./metadata-config"
 
 const inter = Inter({ subsets: ["latin"] })
 
-// Añadir la exportación de viewport y themeColor después de la exportación de metadata
+// SEO --———————————————————————————————————
 export const metadata: Metadata = defaultMetadata
-export { viewport, themeColor }
+export const viewport: Viewport = defaultViewport
+export { themeColor }
 
+// Root layout --———————————————————————————
 export default function RootLayout({
   children,
 }: {
@@ -39,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Google Analytics - Carga optimizada con Next.js Script */}
+        {/* Google Analytics */}
         <Script strategy="afterInteractive" src="https://www.googletagmanager.com/gtag/js?id=G-1FFHMB6H3P" />
         <Script
           id="google-analytics"
@@ -54,17 +48,26 @@ export default function RootLayout({
           }}
         />
       </head>
+
       <body className={`${inter.className} min-h-screen bg-background`}>
         <SupabaseProvider>
+          {/* Session-aware helpers */}
+          <PendingSubmissionRedirect />
+          <PendingVoteProcessor />
+          <PendingCommentHandler />
+
+          {/* Auth + Theme context */}
           <AuthProvider>
             <ThemeProvider attribute="class" defaultTheme="dark">
+              {/* Shell */}
               <div className="flex min-h-screen flex-col">
                 <Header />
                 <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
                 <Footer />
               </div>
+
+              {/* Global UI */}
               <CookieConsent />
-              <PendingVoteProcessor />
               <Toaster />
             </ThemeProvider>
           </AuthProvider>
