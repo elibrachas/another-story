@@ -67,8 +67,7 @@ export async function POST(request: Request) {
             "- Anonimiza las historias cambiando nombres de las personas\n" +
             "- Si hay nombres de empresas debes quitarlos o cambiarlos por otros\n" +
             "- La historia corregida se publicará en una página web\n" +
-            "- No incluyas tu comentario en la respuesta, solo la historia corregida\n" +
-            "- La historia debe tener como máximo 1800 caracteres. Si sobrepasa este largo debes resumirla para que tenga entre 1600 y 1800 caracteres",
+            "- No incluyas tu comentario en la respuesta, solo la historia corregida\n" +,
         },
         {
           role: "user",
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
         },
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 2500,
     })
 
     const improvedContent = completion.choices[0].message.content
