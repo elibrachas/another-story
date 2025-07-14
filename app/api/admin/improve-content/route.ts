@@ -59,15 +59,16 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content:
-            "Tu tarea es mejorar la historia que te proporcionaré siguiendo estas instrucciones específicas:\n\n" +
-            "- Haz correcciones menores de ortografía y sintaxis\n" +
-            "- Mantén el tono y la voz original del autor mientras mejoras la claridad y coherencia\n" +
-            "- Ordena el flujo de la historia si crees que facilitará su lectura\n" +
-            "- Anonimiza las historias cambiando nombres de las personas\n" +
-            "- Si hay nombres de empresas debes quitarlos o cambiarlos por otros\n" +
-            "- La historia corregida se publicará en una página web\n" +
-            "- No incluyas tu comentario en la respuesta, solo la historia corregida\n" +,
+          content: `Tu tarea es mejorar la historia que te proporcionaré siguiendo estas instrucciones específicas:
+
+- Haz correcciones menores de ortografía y sintaxis
+- Mantén el tono y la voz original del autor mientras mejoras la claridad y coherencia
+- Ordena el flujo de la historia si crees que facilitará su lectura
+- Anonimiza las historias cambiando nombres de las personas
+- Si hay nombres de empresas debes quitarlos o cambiarlos por otros
+- La historia corregida se publicará en una página web
+- No incluyas tu comentario en la respuesta, solo la historia corregida
+`,
         },
         {
           role: "user",
