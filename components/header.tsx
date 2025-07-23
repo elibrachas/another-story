@@ -7,7 +7,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { LoginDialog } from "@/components/login-dialog"
 import { useState, useEffect } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { LogOut, User, Shield } from "lucide-react"
+import { LogOut, User, Shield, Menu, X } from "lucide-react"
 import { useSupabase } from "@/lib/supabase-provider"
 import { SearchBar } from "@/components/search-bar"
 import { useTheme } from "next-themes"
@@ -17,6 +17,7 @@ export default function Header() {
   const [showLoginDialog, setShowLoginDialog] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const { theme } = useTheme()
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   // Verificar si el usuario actual es administrador
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function Header() {
           <span className="font-bold text-xl hidden sm:inline">Crónicas Laborales</span>
         </Link>
 
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex gap-6">
           <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
             Historias
@@ -78,6 +80,11 @@ export default function Header() {
             </Link>
           )}
         </nav>
+
+        {/* Mobile Menu Button */}
+        <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setShowMobileMenu(!showMobileMenu)}>
+          {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
 
         <div className="flex items-center gap-4">
           <div className="hidden md:block">
@@ -136,6 +143,52 @@ export default function Header() {
           )}
         </div>
       </div>
+      {/* Mobile Navigation Menu */}
+      {showMobileMenu && (
+        <div className="md:hidden border-t bg-background">
+          <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
+            <Link
+              href="/"
+              className="text-sm font-medium transition-colors hover:text-primary"
+              onClick={() => setShowMobileMenu(false)}
+            >
+              Historias
+            </Link>
+            <Link
+              href="/sobre-nosotros"
+              className="text-sm font-medium transition-colors hover:text-primary"
+              onClick={() => setShowMobileMenu(false)}
+            >
+              Sobre nosotros
+            </Link>
+            <Link
+              href="/mi-libro"
+              className="text-sm font-medium transition-colors hover:text-primary"
+              onClick={() => setShowMobileMenu(false)}
+            >
+              Mi libro
+            </Link>
+            {session && (
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                Panel
+              </Link>
+            )}
+            {session && isAdmin && (
+              <Link
+                href="/admin"
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                Admin
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
       <div className="md:hidden border-t py-2">
         <div className="container mx-auto px-4">
           <SearchBar />
