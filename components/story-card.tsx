@@ -8,6 +8,7 @@ import { CountryFlag } from "@/components/country-flag"
 import { MessageSquare } from "lucide-react"
 import { UpvoteButton } from "@/components/upvote-button"
 import type { Story } from "@/lib/types"
+import Image from "next/image"
 
 interface StoryCardProps {
   story: Story
@@ -46,6 +47,7 @@ export function StoryCard({ story, showExcerpt = true, commentCount = 0 }: Story
   }
 
   const userColor = getUserColor(story.user_id || "anonymous")
+  const isTelegramUser = story.author === "Telegram"
 
   return (
     <Card className="h-full flex flex-col">
@@ -75,9 +77,21 @@ export function StoryCard({ story, showExcerpt = true, commentCount = 0 }: Story
         <div className="flex flex-wrap items-center justify-between w-full text-sm text-gray-500 gap-y-2">
           {/* Author info */}
           <div className="flex items-center gap-2 min-w-[180px]">
-            <Avatar className={`h-6 w-6 ${userColor} text-white`}>
-              <AvatarFallback>{(story.author || "A").substring(0, 1).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            {isTelegramUser ? (
+              <div className="h-6 w-6 rounded-full overflow-hidden bg-white flex items-center justify-center border border-gray-200">
+                <Image
+                  src="/images/telegram-logo.png"
+                  alt="Telegram"
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+              </div>
+            ) : (
+              <Avatar className={`h-6 w-6 ${userColor} text-white`}>
+                <AvatarFallback>{(story.author || "A").substring(0, 1).toUpperCase()}</AvatarFallback>
+              </Avatar>
+            )}
             <span className="font-medium">{story.author || "Anónimo"}</span>
             <span className="text-gray-400">·</span>
             <span>{timeAgo}</span>
@@ -92,7 +106,7 @@ export function StoryCard({ story, showExcerpt = true, commentCount = 0 }: Story
           </div>
         </div>
 
-        {/* Upvotes and comments section - NEW */}
+        {/* Upvotes and comments section */}
         <div className="flex items-center justify-between w-full mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-4">
             {/* Upvote button */}
