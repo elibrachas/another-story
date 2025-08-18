@@ -96,9 +96,7 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
           setPendingSubmission(true)
         } else {
           // Preguntar al usuario si desea cargar la historia pendiente
-          const confirmLoad = window.confirm(
-            "Encontramos una historia que estabas escribiendo. ¿Deseas cargarla?",
-          )
+          const confirmLoad = window.confirm("Encontramos una historia que estabas escribiendo. ¿Deseas cargarla?")
 
           if (confirmLoad) {
             setTitle(pendingStory.title)
@@ -353,6 +351,21 @@ export function SubmitForm({ tags }: { tags: Tag[] }) {
         <AlertDescription>
           Para proteger tu identidad, te recomendamos evitar incluir detalles que puedan identificarte a ti o a tu lugar
           de trabajo.
+        </AlertDescription>
+      </Alert>
+
+      <Alert className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Si prefieres puedes compartir tu historia por {" "}
+          <a
+            href="http://t.me/PippaStories_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-700 underline font-medium"
+          >
+            Telegram
+          </a> (permite audios y texto)
         </AlertDescription>
       </Alert>
 
