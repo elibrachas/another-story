@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createServerComponentClient } from "@/lib/supabase-server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EditStoryForm } from "@/components/admin/edit-story-form"
 
 export default async function EditStoryPage({ params }: { params: { id: string } }) {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = createServerComponentClient()
 
   // Verificar autenticación
   const { data: userData, error: userError } = await supabase.auth.getUser()

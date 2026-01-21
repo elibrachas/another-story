@@ -1,5 +1,4 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createRouteHandlerClient } from "@/lib/supabase-server"
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-admin"
 import { verifyAdminAccess } from "@/lib/auth-utils"
@@ -7,7 +6,7 @@ import { verifyAdminAccess } from "@/lib/auth-utils"
 export async function POST(request: Request) {
   try {
     // Verificar autenticación y permisos de administrador
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient()
     const accessCheck = await verifyAdminAccess(supabase)
 
     if (!accessCheck.authorized) {

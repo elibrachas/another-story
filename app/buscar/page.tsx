@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { StoryCard } from "@/components/story-card"
 import { SearchBar } from "@/components/search-bar"
 import { Button } from "@/components/ui/button"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@supabase/ssr"
 import type { Story } from "@/lib/types"
 
 export default function SearchPage() {
@@ -27,7 +27,10 @@ export default function SearchPage() {
         setLoading(true)
         setError(null)
 
-        const supabase = createClientComponentClient()
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
 
         const { data, error } = await supabase
           .from("stories")

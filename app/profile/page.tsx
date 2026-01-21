@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createServerComponentClient } from "@/lib/supabase-server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProfileForm } from "@/components/profile-form"
 
 export default async function ProfilePage() {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = createServerComponentClient()
 
   const {
     data: { session },

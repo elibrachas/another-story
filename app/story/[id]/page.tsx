@@ -1,5 +1,4 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createServerComponentClient } from "@/lib/supabase-server"
 import { notFound } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -10,11 +9,12 @@ import { Separator } from "@/components/ui/separator"
 import { UpvoteButton } from "@/components/upvote-button"
 import { ConnectionError } from "@/components/connection-error"
 import { sanitizeHtml, sanitizeText } from "@/lib/sanitize"
+import { cookies } from "next/headers"
 
 export const dynamic = "force-dynamic"
 
 export default async function StoryPage({ params }: { params: { id: string } }) {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = createServerComponentClient()
 
   try {
     // Obtener la historia

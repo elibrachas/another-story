@@ -1,13 +1,11 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createRouteHandlerClient } from "@/lib/supabase-server"
 import { NextResponse } from "next/server"
 import { getOpenAIClient } from "@/lib/openai-server"
 
 export async function POST(request: Request) {
   try {
     // Verificar autenticación y permisos de administrador
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient()
 
     // Obtener la sesión actual
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()

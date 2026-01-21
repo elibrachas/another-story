@@ -1,3 +1,5 @@
+import { createServerClient as createSSRServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 
 function getSupabaseUrl(): string {
@@ -14,6 +16,40 @@ function getSupabaseUrl(): string {
   return "https://placeholder.supabase.co"
 }
 
+// Create a server client for Server Components (with cookie handling)
+export function createServerComponentClient() {
+  const cookieStore = cookies()
+  
+  return createSSRServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
+}
+
+// Create a route handler client (same as server component client for App Router)
+export function createRouteHandlerClient() {
+  return createServerComponentClient()
+}
+
+// Create a simple server client without cookie handling (for internal use)
 function createServerClient() {
   const supabaseUrl = getSupabaseUrl()
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

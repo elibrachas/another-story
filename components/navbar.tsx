@@ -1,12 +1,11 @@
 import Link from "next/link"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createServerComponentClient } from "@/lib/supabase-server"
 import { Button } from "@/components/ui/button"
 import { SearchBar } from "@/components/search-bar"
 import { UserNav } from "@/components/user-nav"
 
 export async function Navbar() {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = createServerComponentClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

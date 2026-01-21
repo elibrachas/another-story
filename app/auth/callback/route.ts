@@ -1,8 +1,8 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createRouteHandlerClient } from "@/lib/supabase-server"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createInitialProfile } from "@/lib/actions"
+import { cookies } from "next/headers"
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient()
 
     // Intercambiar el código por una sesión
     const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)

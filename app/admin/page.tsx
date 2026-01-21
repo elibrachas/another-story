@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createServerComponentClient } from "@/lib/supabase-server"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PendingStories } from "@/components/admin/pending-stories"
@@ -9,7 +8,7 @@ import { CommentModeration } from "@/components/admin/comment-moderation"
 import { StatsDashboard } from "@/components/admin/stats-dashboard"
 
 export default async function AdminPage() {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = createServerComponentClient()
 
   // Verificar autenticación
   const { data: userData, error: userError } = await supabase.auth.getUser()
