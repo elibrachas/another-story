@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
 
 type TagType = string | { id: string; name: string }
 
@@ -9,13 +8,10 @@ export function TagBadge({ tag }: { tag: TagType }) {
   const tagName = typeof tag === "object" ? tag.name : tag
 
   return (
-    <Link href={`/tags/${tagId}`}>
-      <Badge
-        variant="outline"
-        className="bg-purple-800 text-purple-100 hover:bg-purple-700 border-purple-700 cursor-pointer"
-      >
+    <Link href={`/tag/${tagId}`}>
+      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors bg-purple-700 text-white hover:bg-purple-600 border border-purple-600 cursor-pointer">
         {tagName}
-      </Badge>
+      </span>
     </Link>
   )
 }
