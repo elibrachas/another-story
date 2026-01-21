@@ -7,6 +7,7 @@ import { PlusCircle, TagIcon } from "lucide-react"
 import Link from "next/link"
 import { TagBadge } from "@/components/tag-badge"
 import { PendingSubmissionRedirect } from "@/components/pending-submission-redirect"
+import { AlcaparraBanner } from "@/components/alcaparra-banner"
 
 // Forzar que esta ruta sea dinámica para evitar errores con cookies
 export const dynamic = "force-dynamic"
@@ -74,34 +75,36 @@ export default async function Home() {
         </div>
 
         <TabsContent value="latest" className="space-y-4">
-          {stories && stories.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[...stories]
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <AlcaparraBanner />
+            {stories && stories.length > 0 ? (
+              [...stories]
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .map((story) => (
                   <StoryCard key={story.id} story={story} commentCount={commentCounts[story.id] || 0} />
-                ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
-            </div>
-          )}
+                ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
         <TabsContent value="top" className="space-y-4">
-          {stories && stories.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[...stories]
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <AlcaparraBanner />
+            {stories && stories.length > 0 ? (
+              [...stories]
                 .sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0))
                 .map((story) => (
                   <StoryCard key={story.id} story={story} commentCount={commentCounts[story.id] || 0} />
-                ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
-            </div>
-          )}
+                ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

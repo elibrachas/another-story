@@ -74,6 +74,14 @@ export default function Header() {
           <Link href="/mi-libro" className="text-sm font-medium transition-colors hover:text-primary">
             Mi libro
           </Link>
+          <Link 
+            href="https://www.alcaparra.co/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm font-medium transition-colors hover:text-orange-500 text-orange-600"
+          >
+            Optimizar CV
+          </Link>
           {session && (
             <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
               Panel
@@ -167,6 +175,15 @@ export default function Header() {
               onClick={() => setShowMobileMenu(false)}
             >
               Mi libro
+            </Link>
+            <Link
+              href="https://www.alcaparra.co/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium transition-colors hover:text-orange-500 text-orange-600"
+              onClick={() => setShowMobileMenu(false)}
+            >
+              Optimizar CV
             </Link>
             {session && (
               <Link
