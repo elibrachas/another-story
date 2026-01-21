@@ -1,4 +1,24 @@
-import DOMPurify from "isomorphic-dompurify"
+/**
+ * Simple HTML sanitization without external dependencies
+ * This avoids build issues with isomorphic-dompurify in Next.js
+ */
+
+const ALLOWED_TAGS = ["b", "i", "em", "strong", "p", "br", "ul", "ol", "li", "a"]
+const ALLOWED_ATTR = ["href", "target", "rel"]
+
+/**
+ * Escapes HTML entities
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }
+  return text.replace(/[&<>"']/g, (m) => map[m])
+}
 
 /**
  * Sanitiza contenido HTML para prevenir ataques XSS
@@ -8,15 +28,30 @@ import DOMPurify from "isomorphic-dompurify"
 export function sanitizeHtml(content: string): string {
   if (!content) return ""
 
-  // Configurar DOMPurify para permitir solo ciertas etiquetas y atributos
-  return DOMPurify.sanitize(content, {
-    ALLOWED_TAGS: ["b", "i", "em", "strong", "p", "br", "ul", "ol", "li", "a"],
-    ALLOWED_ATTR: ["href", "target", "rel"],
-    // Forzar que todos los enlaces se abran en una nueva pestaña y tengan rel="noopener noreferrer"
-    FORBID_TAGS: ["script", "style", "iframe", "form", "object", "embed", "link"],
-    WHOLE_DOCUMENT: false,
-    SANITIZE_DOM: true,
+  // Remove script tags and their content
+  let sanitized = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  
+  // Remove style tags and their content
+  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+  
+  // Remove event handlers
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]+/gi, '')
+  
+  // Remove javascript: urls
+  sanitized = sanitized.replace(/href\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, 'href="#"')
+  
+  // Remove data: urls (except for safe image types)
+  sanitized = sanitized.replace(/href\s*=\s*["']?\s*data:[^"'>\s]*/gi, 'href="#"')
+  
+  // Remove dangerous tags
+  const dangerousTags = ['iframe', 'form', 'object', 'embed', 'link', 'meta', 'base']
+  dangerousTags.forEach(tag => {
+    const regex = new RegExp(`<${tag}\\b[^>]*>.*?<\\/${tag}>|<${tag}\\b[^>]*\\/?>`, 'gi')
+    sanitized = sanitized.replace(regex, '')
   })
+  
+  return sanitized.trim()
 }
 
 /**
@@ -27,12 +62,11 @@ export function sanitizeHtml(content: string): string {
 export function sanitizeText(text: string): string {
   if (!text) return ""
 
-  // Eliminar todas las etiquetas HTML y sanitizar
+  // Eliminar todas las etiquetas HTML
   const plainText = text.replace(/<[^>]*>/g, "")
-  return DOMPurify.sanitize(plainText, {
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [],
-  })
+  
+  // Escape any remaining HTML entities
+  return escapeHtml(plainText)
 }
 
 /**
