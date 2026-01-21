@@ -75,10 +75,10 @@ export default function Header() {
             Mi libro
           </Link>
           <Link 
-            href="https://www.alcaparra.co/" 
+            href="https://www.alcaparra.co/?utm_source=cronicas_laborales&utm_medium=header&utm_campaign=nav_link" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-sm font-medium transition-colors hover:text-orange-500 text-orange-600"
+            className="text-sm font-medium transition-colors hover:text-primary"
           >
             Optimizar CV
           </Link>
@@ -177,10 +177,10 @@ export default function Header() {
               Mi libro
             </Link>
             <Link
-              href="https://www.alcaparra.co/"
+              href="https://www.alcaparra.co/?utm_source=cronicas_laborales&utm_medium=header&utm_campaign=nav_link_mobile"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium transition-colors hover:text-orange-500 text-orange-600"
+              className="text-sm font-medium transition-colors hover:text-primary"
               onClick={() => setShowMobileMenu(false)}
             >
               Optimizar CV

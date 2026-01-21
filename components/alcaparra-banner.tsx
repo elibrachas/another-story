@@ -28,7 +28,7 @@ export function AlcaparraBanner() {
         </p>
 
         <div className="flex flex-col gap-3">
-          <Link href="https://www.alcaparra.co/" target="_blank" rel="noopener noreferrer" className="w-full">
+          <Link href="https://www.alcaparra.co/?utm_source=cronicas_laborales&utm_medium=banner&utm_campaign=homepage" target="_blank" rel="noopener noreferrer" className="w-full">
             <Button 
               className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium"
             >
