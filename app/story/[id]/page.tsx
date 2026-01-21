@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { UpvoteButton } from "@/components/upvote-button"
 import { ConnectionError } from "@/components/connection-error"
 import { sanitizeHtml, sanitizeText } from "@/lib/sanitize"
-import { cookies } from "next/headers"
+import { AlcaparraStoryBanner } from "@/components/alcaparra-story-banner"
 
 export const dynamic = "force-dynamic"
 
@@ -85,6 +85,8 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
             <UpvoteButton storyId={story.id} initialUpvotes={story.upvotes} />
           </div>
         </article>
+
+        <AlcaparraStoryBanner />
 
         <Separator className="my-8" />
 
