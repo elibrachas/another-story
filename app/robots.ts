@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           "/story/*",
           "/tag/*",
           "/buscar",
+          "/mi-libro",
           "/sobre-nosotros",
           "/politica-de-privacidad",
           "/politica-de-cookies",
