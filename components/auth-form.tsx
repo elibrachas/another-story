@@ -26,12 +26,17 @@ export function AuthForm() {
     try {
       setIsLoading(true)
       setIsCreatingProfile(true)
-      const next = `${window.location.pathname}${window.location.search}`
-      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      // El redirectTo debe ser la URL de tu app donde Supabase redirigirá después de autenticar
+      // Supabase maneja el callback de Google internamente y luego redirige aquí
+      const redirectUrl = `${window.location.origin}/auth/callback`
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       })
     } catch (error) {
@@ -193,7 +198,7 @@ export function AuthForm() {
           </div>
 
           <div className="flex flex-col w-full gap-3 mt-4">
-            <Button variant="outline" onClick={handleResendLink} disabled={isLoading} className="w-full">
+            <Button variant="outline" onClick={handleResendLink} disabled={isLoading} className="w-full bg-transparent">
               {isLoading ? "Enviando..." : "Reenviar enlace"}
             </Button>
 
@@ -217,7 +222,7 @@ export function AuthForm() {
             variant="outline"
             onClick={handleGoogleSignIn}
             disabled={isLoading || isCreatingProfile}
-            className="w-full"
+            className="w-full bg-transparent"
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
