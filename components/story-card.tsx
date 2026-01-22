@@ -100,7 +100,9 @@ export function StoryCard({ story, showExcerpt = true, commentCount = 0 }: Story
           {/* Industry and country */}
           <div className="flex items-center gap-2 ml-auto">
             {story.industry && (
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-xs">{story.industry}</span>
+              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700">
+                {story.industry}
+              </span>
             )}
             {story.country && <CountryFlag countryCode={story.country} className="ml-1" />}
           </div>
