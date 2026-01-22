@@ -1,8 +1,8 @@
-import { createRouteHandlerClient } from "@/lib/supabase-server"
+import { createServerClient } from "@supabase/ssr"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createInitialProfile } from "@/lib/actions"
 import { cookies } from "next/headers"
+import { createInitialProfile } from "@/lib/actions"
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -11,27 +11,41 @@ export async function GET(request: NextRequest) {
   const errorDescription = requestUrl.searchParams.get("error_description")
   const next = requestUrl.searchParams.get("next") || "/"
 
-  console.log("Callback recibido:")
-  console.log("- Code:", code ? "presente" : "ausente")
-  console.log("- Error:", error)
-  console.log("- Next:", next)
-  console.log("- Request URL:", requestUrl.toString())
-  console.log("- Origin:", requestUrl.origin)
-
   // Si hay un error en la URL, redirigir a la página de error
   if (error) {
     console.error(`Error en callback de autenticación: ${error} - ${errorDescription}`)
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=${error}&error_description=${errorDescription}`)
   }
 
+  // Si no hay código, simplemente redirigir a home (el usuario puede ya estar autenticado vía cookies)
   if (!code) {
-    console.error("No se encontró código en la URL de callback")
-    return NextResponse.redirect(`${requestUrl.origin}/auth?error=no_code`)
+    return NextResponse.redirect(`${requestUrl.origin}${next}`)
   }
 
-  try {
-    const supabase = createRouteHandlerClient()
+  const cookieStore = cookies()
 
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Ignorar errores al setear cookies en Server Components
+          }
+        },
+      },
+    }
+  )
+
+  try {
     // Intercambiar el código por una sesión
     const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
