@@ -1,15 +1,13 @@
-import { createServerClient } from "@supabase/ssr"
+import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { cookies } from "next/headers"
-import { createInitialProfile } from "@/lib/actions"
+import { generateUsername } from "@/lib/username-generator"
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
   const error = requestUrl.searchParams.get("error")
   const errorDescription = requestUrl.searchParams.get("error_description")
-  const next = requestUrl.searchParams.get("next") || "/"
 
   // Si hay un error en la URL, redirigir a la página de error
   if (error) {
@@ -17,12 +15,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=${error}&error_description=${errorDescription}`)
   }
 
-  // Si no hay código, simplemente redirigir a home (el usuario puede ya estar autenticado vía cookies)
+  // Si no hay código, simplemente redirigir a home
   if (!code) {
-    return NextResponse.redirect(`${requestUrl.origin}${next}`)
+    return NextResponse.redirect(`${requestUrl.origin}/`)
   }
 
-  const cookieStore = cookies()
+  // Almacenar cookies que necesitamos setear
+  const cookiesToSet: { name: string; value: string; options: CookieOptions }[] = []
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,16 +29,12 @@ export async function GET(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll()
+          return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Ignorar errores al setear cookies en Server Components
-          }
+        setAll(cookies) {
+          cookies.forEach((cookie) => {
+            cookiesToSet.push(cookie)
+          })
         },
       },
     }
@@ -51,68 +46,39 @@ export async function GET(request: NextRequest) {
 
     if (sessionError) {
       console.error("Error al intercambiar código por sesión:", sessionError)
-
-      // Redirigir a una página de error con información específica
       return NextResponse.redirect(
         `${requestUrl.origin}/auth?error=session_exchange&message=${encodeURIComponent(sessionError.message)}`,
       )
     }
 
-    console.log("Sesión creada exitosamente para usuario:", data?.session?.user?.id)
+    // Crear la respuesta de redirección
+    const response = NextResponse.redirect(`${requestUrl.origin}/`)
 
-    // Verificar si el usuario ya tiene un perfil para evitar creaciones duplicadas
+    // Aplicar todas las cookies a la respuesta
+    for (const { name, value, options } of cookiesToSet) {
+      response.cookies.set(name, value, options)
+    }
+
+    // Crear perfil si no existe (usando el cliente ya autenticado)
     if (data?.session?.user) {
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", data.session.user.id)
-          .single()
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", data.session.user.id)
+        .maybeSingle()
 
-        if (profileError && profileError.code !== "PGRST116") {
-          console.error("Error al verificar perfil existente:", profileError)
-        }
-
-        // Solo crear perfil si no existe
-        if (!profileData) {
-          console.log("Creando perfil inicial desde callback...")
-          const result = await createInitialProfile()
-          console.log("Resultado de createInitialProfile:", result)
-
-          if (!result.success) {
-            console.error("Error al crear perfil inicial:", result.error)
-            return NextResponse.redirect(
-              `${requestUrl.origin}/auth?error=profile_creation&message=${encodeURIComponent(result.error || "Error al crear perfil")}`,
-            )
-          }
-        } else {
-          console.log("Perfil ya existe, no es necesario crearlo")
-        }
-      } catch (profileError) {
-        console.error("Error al verificar o crear perfil:", profileError)
-        // Continuar con la redirección aunque haya error en la creación del perfil
+      if (!profileData) {
+        const username = generateUsername()
+        await supabase.from("profiles").insert({
+          id: data.session.user.id,
+          username: username,
+          country: "XX",
+          admin: false,
+        })
       }
     }
 
-    // Validar el parámetro next antes de usarlo para la redirección
-    let nextPath = next || "/"
-
-    // Asegurarse de que next es una ruta relativa y no una URL externa
-    if (nextPath.startsWith("http") || nextPath.startsWith("//")) {
-      console.warn("Intento de redirección a URL externa detectado:", nextPath)
-      nextPath = "/"
-    }
-
-    // Asegurar que la ruta comience con /
-    if (!nextPath.startsWith("/")) {
-      nextPath = "/" + nextPath
-    }
-
-    const finalRedirectUrl = `${requestUrl.origin}${nextPath}`
-    console.log("Redirigiendo a:", finalRedirectUrl)
-
-    // Redirigir al destino original o a la página principal por defecto
-    return NextResponse.redirect(finalRedirectUrl)
+    return response
   } catch (error) {
     console.error("Error inesperado en callback:", error)
     return NextResponse.redirect(`${requestUrl.origin}/auth?error=unexpected`)
