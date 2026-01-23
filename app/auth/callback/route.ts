@@ -20,11 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${requestUrl.origin}/`)
   }
 
-  // Almacenar cookies que necesitamos setear
-  const cookiesToSet: { name: string; value: string; options: CookieOptions }[] = []
-
-  // Log de cookies existentes en el request
-  console.log("[v0] Cookies en request:", request.cookies.getAll().map(c => c.name))
+  // Crear la response ANTES del cliente para que setAll pueda escribir las cookies directamente
+  const response = NextResponse.redirect(`${requestUrl.origin}/`)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,9 +32,9 @@ export async function GET(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookies) {
-          console.log("[v0] setAll llamado con cookies:", cookies.map(c => c.name))
+          // Setear las cookies directamente en la response
           cookies.forEach((cookie) => {
-            cookiesToSet.push(cookie)
+            response.cookies.set(cookie.name, cookie.value, cookie.options as CookieOptions)
           })
         },
       },
@@ -46,27 +43,13 @@ export async function GET(request: NextRequest) {
 
   try {
     // Intercambiar el código por una sesión
-    console.log("[v0] Intercambiando código por sesión...")
     const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
     if (sessionError) {
-      console.error("[v0] Error al intercambiar código por sesión:", sessionError)
+      console.error("Error al intercambiar código por sesión:", sessionError)
       return NextResponse.redirect(
         `${requestUrl.origin}/auth?error=session_exchange&message=${encodeURIComponent(sessionError.message)}`,
       )
-    }
-
-    console.log("[v0] Sesión obtenida:", data?.session ? "SI" : "NO")
-    console.log("[v0] User ID:", data?.session?.user?.id)
-    console.log("[v0] Cookies a setear:", cookiesToSet.map(c => c.name))
-
-    // Crear la respuesta de redirección
-    const response = NextResponse.redirect(`${requestUrl.origin}/`)
-
-    // Aplicar todas las cookies a la respuesta
-    for (const { name, value, options } of cookiesToSet) {
-      console.log("[v0] Seteando cookie:", name, "options:", JSON.stringify(options))
-      response.cookies.set(name, value, options)
     }
 
     // Crear perfil si no existe (usando el cliente ya autenticado)
