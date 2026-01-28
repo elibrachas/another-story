@@ -171,7 +171,7 @@ export async function submitComment(formData: FormData) {
     const { error: commentError } = await supabase.from("comments").insert({
       story_id: storyId,
       content: sanitizedContent,
-      author_id: user.id,
+      user_id: user.id,
       approved: false, // Los comentarios requieren aprobación
     })
 
@@ -247,7 +247,7 @@ export async function submitStory(formData: FormData) {
       .insert({
         title: sanitizedTitle,
         content: sanitizedContent,
-        author_id: user.id,
+        user_id: user.id,
         published: false, // Las historias requieren aprobación
       })
       .select()
