@@ -9,6 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  reactStrictMode: false, // Recommended setting
+  swcMinify: true, // Enable SWC minification for improved performance
 }
 
 export default nextConfig
