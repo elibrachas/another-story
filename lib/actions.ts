@@ -1,6 +1,7 @@
 "use server"
 
 import { createServerClient } from "@supabase/ssr"
+import type { User } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { sanitizeContent, sanitizeText } from "@/lib/sanitize"
@@ -32,16 +33,40 @@ function createServerActionClient() {
   )
 }
 
+type AuthUserResult = {
+  user: User | null
+  error: string | null
+}
+
+async function getAuthenticatedUser(supabase: ReturnType<typeof createServerActionClient>): Promise<AuthUserResult> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    return { user, error: null }
+  }
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  if (session?.user) {
+    return { user: session.user, error: null }
+  }
+
+  return { user: null, error: userError?.message ?? sessionError?.message ?? null }
+}
+
 export async function createInitialProfile() {
   const supabase = createServerActionClient()
 
   try {
     console.log("Iniciando createInitialProfile...")
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       console.log("No hay sesión activa")
@@ -119,10 +144,7 @@ export async function submitComment(formData: FormData) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -179,10 +201,7 @@ export async function submitStory(formData: FormData) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -298,10 +317,7 @@ export async function upvoteStory(storyId: string) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -485,10 +501,7 @@ export async function upvoteComment(commentId: string) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -561,10 +574,7 @@ export async function updateProfile(formData: FormData) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "Debes iniciar sesión" }
@@ -675,10 +685,7 @@ export async function approveStory(storyId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
@@ -711,10 +718,7 @@ export async function rejectStory(storyId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
@@ -746,10 +750,7 @@ export async function adminDeleteComment(commentId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
@@ -781,10 +782,7 @@ export async function adminRejectStory(storyId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
