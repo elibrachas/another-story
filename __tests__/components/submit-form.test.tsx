@@ -2,6 +2,14 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { SubmitForm } from "@/components/submit-form"
 import { submitStory } from "@/lib/actions"
 
+const mockToast = jest.fn()
+
+jest.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({
+    toast: mockToast,
+  }),
+}))
+
 // Mock del componente Select de shadcn para pruebas
 jest.mock("@/components/ui/select", () => {
   const React = require("react")
@@ -21,28 +29,10 @@ jest.mock("@/components/ui/select", () => {
   return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
 })
 
-// Mock de las dependencias
 jest.mock("@/lib/actions", () => ({
   submitStory: jest.fn(),
 }))
 
-// Mock para el router de Next.js
-const mockPush = jest.fn()
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
-
-// Mock para el hook de toast
-const mockToast = jest.fn()
-jest.mock("@/components/ui/use-toast", () => ({
-  useToast: () => ({
-    toast: mockToast,
-  }),
-}))
-
-// Mock para el proveedor de Supabase
 jest.mock("@/lib/supabase-provider", () => ({
   useSupabase: () => ({
     session: { user: { id: "test-user-id" } },
@@ -59,72 +49,55 @@ describe("SubmitForm", () => {
     jest.clearAllMocks()
   })
 
-  test("muestra errores de validación cuando faltan campos obligatorios", async () => {
+  test("muestra error cuando falta el título", async () => {
     render(<SubmitForm tags={mockTags} />)
 
-    // Intentar enviar el formulario sin completar campos obligatorios
     fireEvent.click(screen.getByText("Enviar Historia"))
 
-    // Verificar que se muestran los mensajes de error
     await waitFor(() => {
-      expect(screen.getByText("El título es obligatorio")).toBeInTheDocument()
-      expect(screen.getByText("El contenido de la historia es obligatorio")).toBeInTheDocument()
-      expect(screen.getByText("Debes seleccionar una industria")).toBeInTheDocument()
-    })
-
-    // Verificar que no se llamó a submitStory
-    expect(submitStory).not.toHaveBeenCalled()
-  })
-
-  test("envía el formulario correctamente cuando todos los campos están completos", async () => {
-    // Mock de respuesta exitosa
-    ;(submitStory as jest.Mock).mockResolvedValue({ success: true })
-
-    render(<SubmitForm tags={mockTags} />)
-
-    // Completar los campos obligatorios
-    fireEvent.change(
-      screen.getByPlaceholderText("Dale a tu historia un título impactante"),
-      {
-        target: { value: "Mi historia tóxica" },
-      },
-    )
-
-    // Seleccionar industria (esto es más complejo con el componente Select de shadcn)
-    // En un caso real, podríamos necesitar adaptar esto según cómo funciona el componente
-    const selectTrigger = screen.getByText("Selecciona una industria")
-    fireEvent.click(selectTrigger)
-    // Simulamos la selección de una industria
-    // Nota: Esto podría necesitar ajustes dependiendo de cómo se renderiza el componente Select
-    const industryOption = await screen.findByText("Tecnología")
-    fireEvent.click(industryOption)
-
-    // Completar el contenido
-    fireEvent.change(
-      screen.getByPlaceholderText("Comparte tu experiencia..."),
-      {
-        target: { value: "Contenido de la historia..." },
-      },
-    )
-
-    // Enviar el formulario
-    fireEvent.click(screen.getByText("Enviar Historia"))
-
-    // Verificar que se llamó a submitStory con los parámetros correctos
-    await waitFor(() => {
-      expect(submitStory).toHaveBeenCalledWith(
+      expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Mi historia tóxica",
-          content: "Contenido de la historia...",
-          industry: "Tecnología",
-          isAnonymous: false,
+          title: "Error",
+          description: "El título es obligatorio",
         }),
       )
     })
 
-    // Verificar que se muestra el mensaje de éxito
+    expect(submitStory).not.toHaveBeenCalled()
+  })
+
+  test("envía el formulario cuando todos los campos están completos", async () => {
+    ;(submitStory as jest.Mock).mockResolvedValue({ success: true })
+
+    render(<SubmitForm tags={mockTags} />)
+
+    fireEvent.change(screen.getByLabelText(/título de tu historia/i), {
+      target: { value: "Mi historia toxica" },
+    })
+
+    fireEvent.click(screen.getByText("Tecnología"))
+
+    fireEvent.change(screen.getByLabelText(/tu historia/i), {
+      target: { value: "Contenido suficientemente largo para pasar la validación del formulario." },
+    })
+
+    fireEvent.click(screen.getByText("Enviar Historia"))
+
     await waitFor(() => {
-      expect(screen.getByText("¡Historia enviada con éxito!")).toBeInTheDocument()
+      expect(submitStory).toHaveBeenCalled()
+    })
+
+    const formData = (submitStory as jest.Mock).mock.calls[0][0] as FormData
+    expect(formData.get("title")).toBe("Mi historia toxica")
+    expect(formData.get("industry")).toBe("Tecnología")
+    expect(formData.get("content")).toBe("Contenido suficientemente largo para pasar la validación del formulario.")
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining("Historia enviada"),
+        }),
+      )
     })
   })
 })

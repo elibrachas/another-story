@@ -164,6 +164,21 @@ export async function submitComment(formData: FormData) {
       }
     }
 
+    // Obtener datos del perfil para el autor
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error fetching profile for comment:", profileError)
+    }
+
+    const rawAuthorName = profile?.display_name?.trim() || profile?.username?.trim() || "Anónimo"
+    const sanitizedAuthor = sanitizeText(rawAuthorName) || "Anónimo"
+    const sanitizedDisplayName = profile?.display_name ? sanitizeText(profile.display_name.trim()) : null
+
     // Sanitizar contenido
     const sanitizedContent = sanitizeContent(content.trim())
 
@@ -172,6 +187,8 @@ export async function submitComment(formData: FormData) {
       story_id: storyId,
       content: sanitizedContent,
       user_id: user.id,
+      author: sanitizedAuthor,
+      display_name: sanitizedDisplayName,
       approved: false, // Los comentarios requieren aprobación
     })
 
@@ -212,6 +229,7 @@ export async function submitStory(formData: FormData) {
 
     const title = formData.get("title") as string
     const content = formData.get("content") as string
+    const industry = formData.get("industry") as string
     const tagsJson = formData.get("tags") as string
 
     // Validaciones
@@ -222,6 +240,13 @@ export async function submitStory(formData: FormData) {
       }
     }
 
+    if (!industry || industry.trim().length === 0) {
+      return {
+        success: false,
+        error: "La industria es obligatoria",
+      }
+    }
+
     if (!content || content.trim().length < 50) {
       return {
         success: false,
@@ -229,9 +254,25 @@ export async function submitStory(formData: FormData) {
       }
     }
 
+    // Obtener datos del perfil para el autor
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error fetching profile for story:", profileError)
+    }
+
+    const rawAuthorName = profile?.display_name?.trim() || profile?.username?.trim() || "Anónimo"
+    const sanitizedAuthor = sanitizeText(rawAuthorName) || "Anónimo"
+    const sanitizedDisplayName = profile?.display_name ? sanitizeText(profile.display_name.trim()) : null
+
     // Sanitizar contenido
     const sanitizedTitle = sanitizeText(title.trim())
     const sanitizedContent = sanitizeContent(content.trim())
+    const sanitizedIndustry = sanitizeText(industry.trim())
 
     // Parsear etiquetas
     let tags: string[] = []
@@ -247,6 +288,9 @@ export async function submitStory(formData: FormData) {
       .insert({
         title: sanitizedTitle,
         content: sanitizedContent,
+        author: sanitizedAuthor,
+        display_name: sanitizedDisplayName,
+        industry: sanitizedIndustry,
         user_id: user.id,
         published: false, // Las historias requieren aprobación
       })

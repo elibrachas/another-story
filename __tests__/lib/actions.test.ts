@@ -57,6 +57,7 @@ describe("submitStory", () => {
 
     const formData = new FormData()
     formData.append("title", "Test Story")
+    formData.append("industry", "Tecnologia")
     formData.append(
       "content",
       "Este es un contenido de prueba suficientemente largo para pasar la validacion.",
@@ -82,6 +83,7 @@ describe("submitStory", () => {
 
     const formData = new FormData()
     formData.append("title", "Historia con fallback")
+    formData.append("industry", "Tecnologia")
     formData.append(
       "content",
       "Contenido suficientemente largo para validar el flujo de autenticacion con fallback.",
@@ -107,6 +109,7 @@ describe("submitStory", () => {
 
     const formData = new FormData()
     formData.append("title", "Historia sin sesion")
+    formData.append("industry", "Tecnologia")
     formData.append(
       "content",
       "Contenido suficientemente largo para validar el flujo sin sesion autenticada.",

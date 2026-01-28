@@ -9,15 +9,35 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { X, Plus, Send, Loader2 } from "lucide-react"
 import { submitStory } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import { LoginDialog } from "./login-dialog"
 import { useSupabase } from "@/lib/supabase-provider"
+import type { Tag } from "@/lib/types"
 
-export function SubmitForm() {
+const industries = [
+  "Tecnología",
+  "Salud",
+  "Finanzas",
+  "Educación",
+  "Comercio",
+  "Hostelería",
+  "Manufactura",
+  "Gobierno",
+  "Sin fines de lucro",
+  "Otro",
+]
+
+type SubmitFormProps = {
+  tags?: Tag[]
+}
+
+export function SubmitForm({ tags: _availableTags = [] }: SubmitFormProps) {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [industry, setIndustry] = useState("")
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,6 +75,7 @@ export function SubmitForm() {
     // Validaciones del cliente
     const trimmedTitle = title.trim()
     const trimmedContent = content.trim()
+    const trimmedIndustry = industry.trim()
 
     if (!trimmedTitle) {
       toast({
@@ -78,6 +99,15 @@ export function SubmitForm() {
       toast({
         title: "Error",
         description: "El título no puede exceder 200 caracteres",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!trimmedIndustry) {
+      toast({
+        title: "Error",
+        description: "La industria es obligatoria",
         variant: "destructive",
       })
       return
@@ -115,6 +145,7 @@ export function SubmitForm() {
     try {
       const formData = new FormData()
       formData.append("title", trimmedTitle)
+      formData.append("industry", trimmedIndustry)
       formData.append("content", trimmedContent)
       formData.append("tags", JSON.stringify(tags))
 
@@ -215,6 +246,23 @@ export function SubmitForm() {
                 <span>Mínimo 50 caracteres</span>
                 <span>{content.length}/10,000</span>
               </div>
+            </div>
+
+            {/* Industria */}
+            <div className="space-y-2">
+              <Label htmlFor="industry">Industria *</Label>
+              <Select value={industry} onValueChange={setIndustry} disabled={isSubmitting}>
+                <SelectTrigger id="industry" className="w-full">
+                  <SelectValue placeholder="Selecciona una industria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industries.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Etiquetas */}
