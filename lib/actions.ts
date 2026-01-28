@@ -1,53 +1,35 @@
 "use server"
 
-import { createClient } from "@supabase/supabase-js"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { sanitizeContent, sanitizeText } from "@/lib/sanitize"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { generateUsername } from "@/lib/username-generator"
 
-// Función para obtener la URL de Supabase desde las variables disponibles
-function getSupabaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL
-  }
-  if (process.env.SUPABASE_URL) {
-    return process.env.SUPABASE_URL
-  }
-  console.error("No se pudo determinar la URL de Supabase")
-  return "https://placeholder.supabase.co"
-}
-
 function createServerActionClient() {
-  const supabaseUrl = getSupabaseUrl()
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseKey) {
-    console.error("No se encontró clave de Supabase")
-    throw new Error("Supabase key not found")
-  }
-
-  // Obtener el token de acceso desde las cookies
   const cookieStore = cookies()
-  const accessToken = cookieStore.get("sb-access-token")?.value
 
-  const client = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-
-  // Si hay un token de acceso, configurarlo
-  if (accessToken) {
-    client.auth.setSession({
-      access_token: accessToken,
-      refresh_token: cookieStore.get("sb-refresh-token")?.value || "",
-    })
-  }
-
-  return client
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Server Component - ignore cookie setting errors
+          }
+        },
+      },
+    }
+  )
 }
 
 export async function createInitialProfile() {
