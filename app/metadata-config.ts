@@ -1,9 +1,7 @@
 import type { Metadata } from "next"
 
-// URL base para metadatos
-const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
-  ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-  : "https://cronicaslaborales.com" // Cambia esto a tu dominio predeterminado
+// URL base para metadatos - always use the canonical production domain
+const baseUrl = "https://cronicaslaborales.com"
 
 // Configuración de metadatos por defecto
 export const defaultMetadata: Metadata = {
