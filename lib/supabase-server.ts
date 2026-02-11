@@ -67,7 +67,7 @@ function createServerClient() {
   })
 }
 
-export async function getStories(page = 1, limit = 10, searchTerm?: string, tag?: string) {
+export async function getStories(page = 1, limit = 12, searchTerm?: string, tag?: string, sortBy: "latest" | "top" = "latest") {
   try {
     const supabase = createServerClient()
 
@@ -76,9 +76,14 @@ export async function getStories(page = 1, limit = 10, searchTerm?: string, tag?
       .select(`
         *,
         tags:story_tags(tag:tags(id, name))
-      `)
+      `, { count: "exact" })
       .eq("published", true)
-      .order("created_at", { ascending: false })
+
+    if (sortBy === "top") {
+      query = query.order("upvotes", { ascending: false, nullsFirst: false })
+    } else {
+      query = query.order("created_at", { ascending: false })
+    }
 
     if (searchTerm) {
       query = query.or(`title.ilike.%${searchTerm}%, content.ilike.%${searchTerm}%`)
