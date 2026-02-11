@@ -1,4 +1,3 @@
-import Link from "next/link"
 import {
   Pagination,
   PaginationContent,
@@ -59,9 +58,10 @@ export function StoryPagination({ currentPage, totalPages, sortBy, basePath = "/
       <PaginationContent>
         {currentPage > 1 && (
           <PaginationItem>
-            <Link href={buildHref(currentPage - 1, sortBy, basePath)} aria-label="Ir a la página anterior">
-              <PaginationPrevious />
-            </Link>
+            <PaginationPrevious
+              href={buildHref(currentPage - 1, sortBy, basePath)}
+              aria-label="Ir a la página anterior"
+            />
           </PaginationItem>
         )}
 
@@ -72,20 +72,22 @@ export function StoryPagination({ currentPage, totalPages, sortBy, basePath = "/
             </PaginationItem>
           ) : (
             <PaginationItem key={page}>
-              <Link href={buildHref(page, sortBy, basePath)}>
-                <PaginationLink isActive={page === currentPage}>
-                  {page}
-                </PaginationLink>
-              </Link>
+              <PaginationLink
+                href={buildHref(page, sortBy, basePath)}
+                isActive={page === currentPage}
+              >
+                {page}
+              </PaginationLink>
             </PaginationItem>
           )
         )}
 
         {currentPage < totalPages && (
           <PaginationItem>
-            <Link href={buildHref(currentPage + 1, sortBy, basePath)} aria-label="Ir a la siguiente página">
-              <PaginationNext />
-            </Link>
+            <PaginationNext
+              href={buildHref(currentPage + 1, sortBy, basePath)}
+              aria-label="Ir a la siguiente página"
+            />
           </PaginationItem>
         )}
       </PaginationContent>
