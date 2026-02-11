@@ -68,7 +68,7 @@ export function StoryCard({ story, showExcerpt = true, commentCount = 0 }: Story
         {story.tags && story.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {story.tags.map((tag) => (
-              <TagBadge key={typeof tag === "object" ? tag.id : tag} tag={tag} />
+              <TagBadge key={tag.id} tag={tag} />
             ))}
           </div>
         )}

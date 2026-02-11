@@ -37,13 +37,8 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
       notFound()
     }
 
-    // Formatear las etiquetas
-    const formattedTags = story.tags
-      ? story.tags.map((tagObj: any) => ({
-          id: tagObj.tag.id,
-          name: tagObj.tag.name,
-        }))
-      : []
+    // Las etiquetas ya vienen normalizadas desde getStoryById
+    const formattedTags = story.tags || []
 
     // Sanitizar el contenido
     const safeTitle = sanitizeText(story.title)
