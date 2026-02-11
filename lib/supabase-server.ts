@@ -98,8 +98,18 @@ export async function getStories(page = 1, limit = 10, searchTerm?: string, tag?
       return { stories: [], totalCount: 0, error: error.message }
     }
 
+    // Normalize nested tags from story_tags join into flat { id, name } objects
+    const normalizedStories = (data || []).map((story: any) => ({
+      ...story,
+      tags: story.tags
+        ? story.tags
+            .map((tagObj: any) => tagObj?.tag)
+            .filter((tag: any) => tag?.id && tag?.name)
+        : [],
+    }))
+
     return {
-      stories: data || [],
+      stories: normalizedStories,
       totalCount: count || 0,
       error: null,
     }
@@ -140,7 +150,19 @@ export async function getStoryById(id: string) {
       return { story: null, error: error.message }
     }
 
-    return { story: data, error: null }
+    // Normalize nested tags from story_tags join into flat { id, name } objects
+    const normalizedStory = data
+      ? {
+          ...data,
+          tags: data.tags
+            ? data.tags
+                .map((tagObj: any) => tagObj?.tag)
+                .filter((tag: any) => tag?.id && tag?.name)
+            : [],
+        }
+      : null
+
+    return { story: normalizedStory, error: null }
   } catch (error) {
     console.error("Error in getStoryById:", error)
     return {
@@ -225,8 +247,18 @@ export async function getStoriesByTag(tagName: string, page = 1, limit = 10) {
       return { stories: [], totalCount: 0, error: error.message }
     }
 
+    // Normalize nested tags from story_tags join into flat { id, name } objects
+    const normalizedStories = (data || []).map((story: any) => ({
+      ...story,
+      tags: story.tags
+        ? story.tags
+            .map((tagObj: any) => tagObj?.tag)
+            .filter((tag: any) => tag?.id && tag?.name)
+        : [],
+    }))
+
     return {
-      stories: data || [],
+      stories: normalizedStories,
       totalCount: count || 0,
       error: null,
     }
