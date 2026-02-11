@@ -1,111 +1,123 @@
 import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
 
-// Crear un cliente de Supabase usando variables de entorno
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "")
+// Regenerate sitemap on every request so new stories appear immediately
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+const BASE_URL = "https://cronicaslaborales.com"
+const STORIES_PER_PAGE = 12
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Determinar la URL base según el entorno
-  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "https://cronicaslaborales.com" // Cambia esto a tu dominio predeterminado
-
-  // Fecha actual para páginas estáticas
   const currentDate = new Date()
 
-  // Páginas estáticas
-  const staticRoutes = [
+  // Static routes
+  const staticRoutes: MetadataRoute.Sitemap = [
     {
-      url: `${baseUrl}`,
+      url: BASE_URL,
       lastModified: currentDate,
-      changeFrequency: "daily" as const,
+      changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: `${baseUrl}/mi-libro`,
+      url: `${BASE_URL}/mi-libro`,
       lastModified: currentDate,
-      changeFrequency: "monthly" as const,
+      changeFrequency: "monthly",
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/buscar`,
+      url: `${BASE_URL}/buscar`,
       lastModified: currentDate,
-      changeFrequency: "daily" as const,
+      changeFrequency: "daily",
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/sobre-nosotros`,
+      url: `${BASE_URL}/sobre-nosotros`,
       lastModified: currentDate,
-      changeFrequency: "monthly" as const,
+      changeFrequency: "monthly",
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/politica-de-privacidad`,
+      url: `${BASE_URL}/politica-de-privacidad`,
       lastModified: currentDate,
-      changeFrequency: "yearly" as const,
-      priority: 0.5,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
-      url: `${baseUrl}/politica-de-cookies`,
+      url: `${BASE_URL}/politica-de-cookies`,
       lastModified: currentDate,
-      changeFrequency: "yearly" as const,
-      priority: 0.5,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
-      url: `${baseUrl}/terminos-de-servicio`,
+      url: `${BASE_URL}/terminos-de-servicio`,
       lastModified: currentDate,
-      changeFrequency: "yearly" as const,
-      priority: 0.5,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ]
 
   try {
-    // Obtener historias publicadas para el sitemap
-    const { data: stories, error: storiesError } = await supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+      process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+    )
+
+    // Fetch published stories
+    const { data: stories, error: storiesError, count: storiesCount } = await supabase
       .from("stories")
-      .select("id, created_at") // Solo seleccionamos id y created_at
+      .select("id, created_at", { count: "exact" })
       .eq("published", true)
       .order("created_at", { ascending: false })
 
     if (storiesError) {
-      console.error("Error al obtener historias para el sitemap:", storiesError)
+      console.error("Error fetching stories for sitemap:", storiesError)
       return staticRoutes
     }
 
-    // Mapear historias a rutas del sitemap
-    const storyRoutes =
+    // Individual story routes
+    const storyRoutes: MetadataRoute.Sitemap =
       stories?.map((story) => ({
-        url: `${baseUrl}/story/${story.id}`,
-        lastModified: new Date(story.created_at), // Usamos created_at en lugar de updated_at
+        url: `${BASE_URL}/story/${story.id}`,
+        lastModified: new Date(story.created_at),
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })) || []
 
-    // Obtener etiquetas para el sitemap
+    // Paginated homepage routes (page 2+, page 1 is the root "/")
+    const totalPages = Math.ceil((storiesCount || 0) / STORIES_PER_PAGE)
+    const paginatedRoutes: MetadataRoute.Sitemap = []
+    for (let page = 2; page <= totalPages; page++) {
+      paginatedRoutes.push({
+        url: `${BASE_URL}?page=${page}`,
+        lastModified: currentDate,
+        changeFrequency: "daily",
+        priority: 0.5,
+      })
+    }
+
+    // Fetch tags
     const { data: tags, error: tagsError } = await supabase
       .from("tags")
       .select("id, name")
       .order("name", { ascending: true })
 
     if (tagsError) {
-      console.error("Error al obtener etiquetas para el sitemap:", tagsError)
-      return [...staticRoutes, ...storyRoutes]
+      console.error("Error fetching tags for sitemap:", tagsError)
+      return [...staticRoutes, ...storyRoutes, ...paginatedRoutes]
     }
 
-    // Mapear etiquetas a rutas del sitemap
-    const tagRoutes =
+    const tagRoutes: MetadataRoute.Sitemap =
       tags?.map((tag) => ({
-        url: `${baseUrl}/tag/${tag.id}`,
+        url: `${BASE_URL}/tag/${tag.id}`,
         lastModified: currentDate,
         changeFrequency: "weekly" as const,
         priority: 0.6,
       })) || []
 
-    // Combinar todas las rutas
-    return [...staticRoutes, ...storyRoutes, ...tagRoutes]
+    return [...staticRoutes, ...storyRoutes, ...paginatedRoutes, ...tagRoutes]
   } catch (error) {
-    console.error("Error al generar el sitemap:", error)
-    // En caso de error, devolver al menos las rutas estáticas
+    console.error("Error generating sitemap:", error)
     return staticRoutes
   }
 }

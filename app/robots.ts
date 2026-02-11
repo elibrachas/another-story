@@ -1,10 +1,7 @@
 import type { MetadataRoute } from "next"
 
 export default function robots(): MetadataRoute.Robots {
-  // Determinar la URL base según el entorno
-  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "https://cronicaslaborales.com" // Cambia esto a tu dominio predeterminado
+  const baseUrl = "https://cronicaslaborales.com"
 
   return {
     rules: [

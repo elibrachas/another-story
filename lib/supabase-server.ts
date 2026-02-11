@@ -67,7 +67,7 @@ function createServerClient() {
   })
 }
 
-export async function getStories(page = 1, limit = 10, searchTerm?: string, tag?: string) {
+export async function getStories(page = 1, limit = 12, searchTerm?: string, tag?: string, sortBy: "latest" | "top" = "latest") {
   try {
     const supabase = createServerClient()
 
@@ -76,9 +76,14 @@ export async function getStories(page = 1, limit = 10, searchTerm?: string, tag?
       .select(`
         *,
         tags:story_tags(tag:tags(id, name))
-      `)
+      `, { count: "exact" })
       .eq("published", true)
-      .order("created_at", { ascending: false })
+
+    if (sortBy === "top") {
+      query = query.order("upvotes", { ascending: false, nullsFirst: false })
+    } else {
+      query = query.order("created_at", { ascending: false })
+    }
 
     if (searchTerm) {
       query = query.or(`title.ilike.%${searchTerm}%, content.ilike.%${searchTerm}%`)
@@ -228,16 +233,29 @@ export async function getCommentCountsForStories(storyIds: string[]) {
   }
 }
 
-export async function getStoriesByTag(tagName: string, page = 1, limit = 10) {
+export async function getStoriesByTag(tagId: string, page = 1, limit = 10) {
   try {
     const supabase = createServerClient()
+
+    // First get story IDs that have this tag
+    const { data: storyTagData, error: storyTagError } = await supabase
+      .from("story_tags")
+      .select("story_id")
+      .eq("tag_id", tagId)
+
+    if (storyTagError || !storyTagData || storyTagData.length === 0) {
+      return { stories: [], totalCount: 0, error: storyTagError?.message || null }
+    }
+
+    const storyIds = storyTagData.map((st) => st.story_id)
 
     const { data, error, count } = await supabase
       .from("stories")
       .select(`
         *,
         tags:story_tags(tag:tags(id, name))
-      `)
+      `, { count: "exact" })
+      .in("id", storyIds)
       .eq("published", true)
       .order("created_at", { ascending: false })
       .range((page - 1) * limit, page * limit - 1)

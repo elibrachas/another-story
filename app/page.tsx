@@ -1,23 +1,34 @@
 import { getStories, getAllTags, getCommentCountsForStories } from "@/lib/supabase-server"
 import { StoryCard } from "@/components/story-card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlusCircle, TagIcon } from "lucide-react"
 import Link from "next/link"
 import { TagBadge } from "@/components/tag-badge"
 import { PendingSubmissionRedirect } from "@/components/pending-submission-redirect"
 import { AlcaparraBanner } from "@/components/alcaparra-banner"
+import { StoryPagination } from "@/components/story-pagination"
 
 // Forzar que esta ruta sea dinámica para evitar errores con cookies
 export const dynamic = "force-dynamic"
 
-export default async function Home() {
-  // Obtener historias y etiquetas
-  const { stories } = await getStories()
+const STORIES_PER_PAGE = 12
+
+interface HomeProps {
+  searchParams: Promise<{ page?: string; sort?: string }>
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const params = await searchParams
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1)
+  const sortBy = params.sort === "top" ? "top" : "latest"
+
+  // Obtener historias paginadas y etiquetas
+  const { stories, totalCount } = await getStories(currentPage, STORIES_PER_PAGE, undefined, undefined, sortBy)
   const { tags } = await getAllTags()
 
-  // Obtener conteo de comentarios para todas las historias
+  const totalPages = Math.ceil(totalCount / STORIES_PER_PAGE)
+
+  // Obtener conteo de comentarios para las historias de esta página
   const storyIds = (stories || []).map((story) => story.id)
   const commentCounts = await getCommentCountsForStories(storyIds)
 
@@ -53,60 +64,50 @@ export default async function Home() {
         </section>
       )}
 
-      <Tabs defaultValue="latest" className="w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
-          <TabsList>
-            <TabsTrigger value="latest">Más Recientes</TabsTrigger>
-            <TabsTrigger value="top">Más Populares</TabsTrigger>
-          </TabsList>
+      {/* Sort tabs as links for SEO */}
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/?sort=latest`}
+          className={`inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            sortBy === "latest"
+              ? "bg-background text-foreground shadow-sm border"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          Más Recientes
+        </Link>
+        <Link
+          href={`/?sort=top`}
+          className={`inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            sortBy === "top"
+              ? "bg-background text-foreground shadow-sm border"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          Más Populares
+        </Link>
+      </div>
 
-          <div className="hidden" id="top-filter">
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="Filtrar por período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Última semana</SelectItem>
-                <SelectItem value="month">Último mes</SelectItem>
-                <SelectItem value="all">Todos los tiempos</SelectItem>
-              </SelectContent>
-            </Select>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {currentPage === 1 && <AlcaparraBanner />}
+        {stories && stories.length > 0 ? (
+          stories.map((story) => (
+            <StoryCard key={story.id} story={story} commentCount={commentCounts[story.id] || 0} />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
           </div>
-        </div>
+        )}
+      </div>
 
-        <TabsContent value="latest" className="space-y-4">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <AlcaparraBanner />
-            {stories && stories.length > 0 ? (
-              [...stories]
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .map((story) => (
-                  <StoryCard key={story.id} story={story} commentCount={commentCounts[story.id] || 0} />
-                ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-        <TabsContent value="top" className="space-y-4">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <AlcaparraBanner />
-            {stories && stories.length > 0 ? (
-              [...stories]
-                .sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0))
-                .map((story) => (
-                  <StoryCard key={story.id} story={story} commentCount={commentCounts[story.id] || 0} />
-                ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">No hay historias publicadas aún. ¡Sé el primero en compartir!</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+      {totalPages > 1 && (
+        <StoryPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          sortBy={sortBy}
+        />
+      )}
     </div>
   )
 }
