@@ -1,4 +1,4 @@
-import { createServerComponentClient } from "@/lib/supabase-server"
+import { getStoryById } from "@/lib/supabase-server"
 import { notFound } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -14,23 +14,9 @@ import { AlcaparraStoryBanner } from "@/components/alcaparra-story-banner"
 export const dynamic = "force-dynamic"
 
 export default async function StoryPage({ params }: { params: { id: string } }) {
-  const supabase = createServerComponentClient()
-
   try {
-    // Obtener la historia
-    const { data: story, error } = await supabase
-      .from("stories")
-      .select(
-        `
-        *,
-        tags:story_tags(
-          tag:tags(*)
-        )
-      `,
-      )
-      .eq("id", params.id)
-      .eq("published", true)
-      .single()
+    // Obtener la historia con tags normalizadas
+    const { story, error } = await getStoryById(params.id)
 
     if (error || !story) {
       console.error("Error fetching story:", error)

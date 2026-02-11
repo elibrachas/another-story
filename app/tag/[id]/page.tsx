@@ -10,15 +10,15 @@ export const revalidate = 60 // Revalidar cada minuto
 
 export default async function TagPage({ params }: { params: { id: string } }) {
   const tagId = params.id
-  const stories = await getStoriesByTag(tagId)
-  const allTags = await getAllTags()
+  const { stories } = await getStoriesByTag(tagId)
+  const { tags: allTags } = await getAllTags()
 
   // Obtener conteo de comentarios para todas las historias
-  const storyIds = stories.map((story) => story.id)
+  const storyIds = stories.map((story: any) => story.id)
   const commentCounts = await getCommentCountsForStories(storyIds)
 
   // Encontrar la etiqueta actual
-  const currentTag = allTags.find((tag) => tag.id === tagId)
+  const currentTag = allTags.find((tag: any) => tag.id === tagId)
 
   if (!currentTag) {
     notFound()
