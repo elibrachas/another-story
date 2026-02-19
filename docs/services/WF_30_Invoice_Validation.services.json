@@ -24,7 +24,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH cte AS (\n  SELECT id\n  FROM nucleo_ops.documents_inbox\n  WHERE doc_type = 'invoice_pdf' AND status = 'queued'\n  ORDER BY received_at ASC\n  FOR UPDATE SKIP LOCKED\n  LIMIT 1\n)\nUPDATE nucleo_ops.documents_inbox d\nSET status='processing',\n    processing_note='claimed by WF_30 services',\n    updated_at=now()\nFROM cte\nWHERE d.id = cte.id\nRETURNING d.*;",
+        "query": "WITH cte AS (\n  SELECT id\n  FROM nucleo_ops.documents_inbox\n  WHERE doc_type = 'invoice_pdf'\n    AND status = 'queued'\n  ORDER BY received_at ASC\n  FOR UPDATE SKIP LOCKED\n  LIMIT 1\n), claimed AS (\n  UPDATE nucleo_ops.documents_inbox d\n  SET status = 'processing',\n      processing_note = 'claimed by WF_30 services',\n      updated_at = now()\n  FROM cte\n  WHERE d.id = cte.id\n  RETURNING d.*\n)\nSELECT\n  c.id,\n  c.id AS document_id,\n  COALESCE(c.drive_file_id, c.raw_payload->>'drive_file_id', '') AS drive_file_id,\n  COALESCE(c.doc_internal_ref, c.raw_payload->>'doc_internal_ref', '') AS doc_internal_ref,\n  COALESCE(c.raw_payload->>'client_id', '') AS client_id,\n  COALESCE(c.raw_payload->>'supplier', 'bosch') AS supplier,\n  c.raw_payload\nFROM claimed c;",
         "options": {}
       },
       "name": "Claim next invoice_pdf doc",
@@ -41,6 +41,10 @@
           "string": [
             {
               "value1": "={{$json.id}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.drive_file_id}}",
               "operation": "isNotEmpty"
             }
           ]
@@ -148,7 +152,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'needs_review', '\" + ($node['Invoice Extract Service'].json.quality.reasons || []).join(', ').replace(/'/g, \"''\") + \"');\" }}",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'failed', '\" + (\"needs_review: \" + (($node['Invoice Extract Service'].json.quality.reasons || []).join(', '))).replace(/'/g, \"''\") + \"');\" }}",
         "options": {}
       },
       "name": "Set needs_review",
@@ -176,7 +180,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'needs_review', 'technical_failure_after_retries');\" }}",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'failed', 'technical_failure_after_retries');\" }}",
         "options": {}
       },
       "name": "Set needs_review technical failure",

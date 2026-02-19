@@ -1,0 +1,397 @@
+{
+  "name": "WF_30_Invoice_Validation_Services",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "name": "Cron - every 5 min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1616,
+        96
+      ],
+      "id": "ce80be6b-8888-481a-adc5-1635322affbd"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH candidate AS (\n  SELECT id\n  FROM nucleo_ops.documents_inbox\n  WHERE doc_type = 'invoice_pdf'\n    AND attempts < 5\n    AND (\n      status IN ('queued','failed')\n      OR (\n        status = 'processing'\n        AND (claimed_at IS NULL OR claimed_at < now() - interval '1 minutes')\n      )\n    )\n  ORDER BY\n    CASE status WHEN 'queued' THEN 1 WHEN 'failed' THEN 2 ELSE 3 END,\n    received_at ASC\n  FOR UPDATE SKIP LOCKED\n  LIMIT 1\n),\nupd AS (\n  UPDATE nucleo_ops.documents_inbox d\n  SET status = 'processing',\n      processing_note = 'claimed by WF_30',\n      claimed_at = now(),\n      attempts = attempts + 1,\n      last_error = NULL,\n      updated_at = now()\n  FROM candidate\n  WHERE d.id = candidate.id\n  RETURNING\n    d.id AS document_id,\n    d.doc_type,\n    d.doc_internal_ref,\n    d.drive_file_id,\n    d.drive_file_link,\n    d.attachment_name,\n    d.attachment_mime,\n    d.received_at,\n    d.raw_payload,\n    d.attempts,\n    d.claimed_at\n)\nSELECT\n  (SELECT COUNT(*) FROM upd) = 1 AS found,\n  (SELECT row_to_json(upd) FROM upd) AS doc;",
+        "options": {}
+      },
+      "name": "Claim next invoice_pdf doc",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1376,
+        96
+      ],
+      "id": "e0df37bf-2110-4b52-bd12-e6f4b6517fa8",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "hkaBNLJ1ZHwAEm3q",
+          "name": "Supabase:Cronicas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.id}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "IF has document?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        96
+      ],
+      "id": "e2597b35-14ea-4874-a9d6-884274a037ca"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://cronicaslaborales.com/api/services/v1/invoices/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=={{ {\n  document_id: $json.document_id,\n  client_id: ($json.client_id || $json.raw_payload?.client_id || $env.DEFAULT_CLIENT_ID || 'cronicas'),\n  supplier: ($json.supplier || $json.raw_payload?.supplier || 'bosch'),\n  drive_file_id: $json.drive_file_id,\n  doc_internal_ref: ($json.doc_internal_ref || '')\n} }}\n",
+        "options": {
+          "timeout": 240000
+        }
+      },
+      "name": "Invoice Extract Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -640,
+        96
+      ],
+      "id": "d9310f8e-bf9f-4ee5-af54-effabd12b5fa",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Ip7lKSKA62aqMI85",
+          "name": "Payload Bearer"
+        },
+        "httpCustomAuth": {
+          "id": "K5KPsBiYoFQrihVM",
+          "name": "nucleo_ops"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "ad567269-f4fb-43f9-8056-b608efec03fd",
+              "leftValue": "=={{ $json.success === true && !!$json.extraction && Array.isArray($json.extraction.lines) && $json.extraction.lines.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "IF extraction success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        96
+      ],
+      "id": "830c63c9-b94b-4163-82e1-31b69cebbd6a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT nucleo_ops.fn_ingest_invoice_payload($1::jsonb) AS result;",
+        "options": {
+          "queryReplacement": "=={{ JSON.stringify($json.extraction) }}"
+        }
+      },
+      "name": "Persist invoice payload",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        96
+      ],
+      "id": "7d58fc04-c3a9-4615-878d-84e67254e46b",
+      "credentials": {
+        "postgres": {
+          "id": "hkaBNLJ1ZHwAEm3q",
+          "name": "Supabase:Cronicas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$node['Invoice Extract Service'].json.quality.needs_review}}",
+              "operation": "isTrue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "IF needs review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        64,
+        96
+      ],
+      "id": "b4755ea9-cb3f-4ba9-918d-bac9a7dd3c6a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'needs_review', '\" + ($node['Invoice Extract Service'].json.quality.reasons || []).join(', ').replace(/'/g, \"''\") + \"');\" }}",
+        "options": {}
+      },
+      "name": "Set needs_review",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "0a5c8d64-b531-41af-9a34-dced2b154f0e",
+      "credentials": {
+        "postgres": {
+          "id": "hkaBNLJ1ZHwAEm3q",
+          "name": "Supabase:Cronicas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'processed', 'invoice validated by services api');\" }}",
+        "options": {}
+      },
+      "name": "Set processed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        304,
+        192
+      ],
+      "id": "f93c936a-5b8a-4e73-82de-6622512b7c4d",
+      "credentials": {
+        "postgres": {
+          "id": "hkaBNLJ1ZHwAEm3q",
+          "name": "Supabase:Cronicas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE nucleo_ops.documents_inbox\nSET status = 'error',\n    processing_note = $1\nWHERE id = $2;",
+        "options": {}
+      },
+      "name": "Set needs_review technical failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        64,
+        336
+      ],
+      "id": "a8ffa325-2ef2-4ca0-8fe5-8233519bfe02",
+      "credentials": {
+        "postgres": {
+          "id": "hkaBNLJ1ZHwAEm3q",
+          "name": "Supabase:Cronicas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    extraction_error: $json.error || 'Extraction failed or returned empty extraction'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        336
+      ],
+      "id": "c954e3ca-d49a-47f7-b39e-7370d8d9d21f",
+      "name": "Needs Review error"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json.doc || null;\nif (!d) return [{ json: { found: false } }];\n\nreturn [{\n  json: {\n    found: true,\n    ...d\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        96
+      ],
+      "id": "9d5132d8-b374-4ffd-8746-5b3de779c696",
+      "name": "Flatten doc"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron - every 5 min": {
+      "main": [
+        [
+          {
+            "node": "Claim next invoice_pdf doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim next invoice_pdf doc": {
+      "main": [
+        [
+          {
+            "node": "Flatten doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF has document?": {
+      "main": [
+        [
+          {
+            "node": "Invoice Extract Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Extract Service": {
+      "main": [
+        [
+          {
+            "node": "IF extraction success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF extraction success?": {
+      "main": [
+        [
+          {
+            "node": "Persist invoice payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs Review error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist invoice payload": {
+      "main": [
+        [
+          {
+            "node": "IF needs review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF needs review?": {
+      "main": [
+        [
+          {
+            "node": "Set needs_review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Review error": {
+      "main": [
+        [
+          {
+            "node": "Set needs_review technical failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten doc": {
+      "main": [
+        [
+          {
+            "node": "IF has document?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "8de2c2db-f0bb-4b13-b592-c9866ecfde12",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7ce3aa4dcd54d077b632b89f5a8a8421a0b99929c63f4be793ccf1aeb231f32e"
+  },
+  "id": "MYy_ukTCQLemWowtSrKjA",
+  "tags": []
+}

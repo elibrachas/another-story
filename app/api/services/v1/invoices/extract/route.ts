@@ -6,6 +6,8 @@ import { runInvoiceExtractionPipeline } from "@/lib/services/invoices/pipeline"
 import { invoiceExtractRequestSchema } from "@/lib/services/invoices/schema"
 
 export const runtime = "nodejs"
+const DEBUG_LOG_WINDOW_MS = 60_000
+const DEBUG_LOG_UNTIL = Date.now() + DEBUG_LOG_WINDOW_MS
 
 function getRequestId(request: Request): string {
   const headerValue = request.headers.get("x-request-id")
@@ -43,13 +45,33 @@ export async function POST(request: Request) {
   const requestId = getRequestId(request)
 
   try {
+    const contentType = request.headers.get("content-type") || ""
     const isAuthorized = verifyServiceToken(request.headers.get("authorization"))
     if (!isAuthorized) {
       return errorResponse(401, "unauthorized", "Invalid service token", requestId, Date.now() - startedAt)
     }
 
-    const body = await request.json()
-    const payload = invoiceExtractRequestSchema.parse(body)
+    const rawBody = await request.text()
+    let parsedBody: unknown = {}
+    if (rawBody.trim().length > 0) {
+      try {
+        parsedBody = JSON.parse(rawBody)
+      } catch {
+        throw new SyntaxError("Request body must be valid JSON")
+      }
+    }
+
+    if (Date.now() <= DEBUG_LOG_UNTIL) {
+      console.log("invoice_extract_debug_request", {
+        request_id: requestId,
+        content_type: contentType,
+        raw_body: rawBody,
+        raw_body_length: rawBody.length,
+        parsed_body: parsedBody,
+      })
+    }
+
+    const payload = invoiceExtractRequestSchema.parse(parsedBody)
 
     const pipelineResult = await runInvoiceExtractionPipeline(payload)
     const durationMs = Date.now() - startedAt

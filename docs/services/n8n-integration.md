@@ -11,9 +11,9 @@ An example importable workflow is included at:
 Keep:
 
 1. `Claim next invoice_pdf doc`
-2. `IF has document?`
+2. `IF has document?` (validar `id` y `drive_file_id`)
 3. `Persist invoice payload`
-4. status updates (`processed` / `needs_review`)
+4. status updates (`processed` / `failed`)
 
 Remove/replace:
 
@@ -62,12 +62,12 @@ Add an IF node `IF extraction success?` with condition:
 ```
 
 1. `true` branch: persist payload and continue normal status logic.
-2. `false` branch: mark `needs_review` with note `technical_failure_after_retries`.
+2. `false` branch: mark `failed` with note `technical_failure_after_retries`.
 
 Technical failure status query:
 
 ```sql
-={{ "select nucleo_ops.fn_set_document_status('" + $node['Claim next invoice_pdf doc'].json.id + "'::uuid, 'needs_review', 'technical_failure_after_retries');" }}
+={{ "select nucleo_ops.fn_set_document_status('" + $node['Claim next invoice_pdf doc'].json.id + "'::uuid, 'failed', 'technical_failure_after_retries');" }}
 ```
 
 ## Persist payload
@@ -83,7 +83,7 @@ Use `{{$json.extraction}}` from service response:
 After persisting, branch on `{{$json.quality.needs_review}}`:
 
 1. `false` -> mark processed
-2. `true` -> mark needs_review with reasons
+2. `true` -> mark failed with review reasons (`needs_review: ...`)
 
 Processed example:
 
@@ -94,7 +94,7 @@ Processed example:
 Needs review example:
 
 ```sql
-={{ "select nucleo_ops.fn_set_document_status('" + $node['Claim next invoice_pdf doc'].json.id + "'::uuid, 'needs_review', '" + ($json.quality.reasons || []).join(', ').replace(/'/g, "''") + "');" }}
+={{ "select nucleo_ops.fn_set_document_status('" + $node['Claim next invoice_pdf doc'].json.id + "'::uuid, 'failed', '" + ("needs_review: " + (($json.quality.reasons || []).join(', '))).replace(/'/g, "''") + "');" }}
 ```
 
 ## Retries
@@ -104,7 +104,7 @@ Configure node retry policy:
 1. Max attempts: `3`
 2. Retry on technical errors (`5xx`, timeouts)
 3. After max retries (or non-200 error), route through the `false` branch and set:
-   - `needs_review`
+   - `failed`
    - note: `technical_failure_after_retries`
 
 ## Expected response sample
