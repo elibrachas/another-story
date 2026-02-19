@@ -45,6 +45,15 @@ Create a `.env.local` file and define the following keys:
 
 Additional variables may be required depending on your deployment. See [docs/environment.md](docs/environment.md) for more details.
 
+For the private services API (invoice extraction), see:
+
+- [docs/services/README.md](docs/services/README.md)
+- [docs/services/openapi.yaml](docs/services/openapi.yaml)
+- [docs/services/n8n-integration.md](docs/services/n8n-integration.md)
+- [docs/services/runbook-invoice-extraction.md](docs/services/runbook-invoice-extraction.md)
+- [docs/services/WF_30_Invoice_Validation.services.json](docs/services/WF_30_Invoice_Validation.services.json)
+- [docs/services/phase1-status-and-env-checklist.md](docs/services/phase1-status-and-env-checklist.md)
+
 ## Repository Structure
 
 \`\`\`

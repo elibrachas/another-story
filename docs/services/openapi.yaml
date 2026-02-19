@@ -1,0 +1,261 @@
+openapi: 3.1.0
+info:
+  title: Private Services API
+  version: 1.0.0
+  description: Private API for invoice extraction used by n8n.
+servers:
+  - url: https://cronicaslaborales.com
+paths:
+  /api/services/v1/health:
+    get:
+      summary: Health check
+      operationId: getServicesHealth
+      responses:
+        "200":
+          description: Service health
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  ok:
+                    type: boolean
+                  service:
+                    type: string
+                  version:
+                    type: string
+                required: [ok, service, version]
+  /api/services/v1/invoices/extract:
+    post:
+      summary: Extract invoice payload from Google Drive PDF
+      operationId: extractInvoice
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: header
+          name: X-Request-Id
+          required: false
+          schema:
+            type: string
+          description: Optional client-provided trace id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceExtractRequest"
+      responses:
+        "200":
+          description: Invoice extraction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceExtractSuccessResponse"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid service token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Service misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Upstream extraction failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: service-token
+  schemas:
+    InvoiceExtractRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+        supplier:
+          type: string
+        drive_file_id:
+          type: string
+        doc_internal_ref:
+          type: string
+      required: [document_id, client_id, supplier, drive_file_id]
+    InvoiceLine:
+      type: object
+      properties:
+        line_no:
+          oneOf:
+            - type: number
+            - type: string
+        code_raw:
+          type: string
+        description:
+          type: string
+        qty:
+          oneOf:
+            - type: number
+            - type: string
+        unit_price:
+          oneOf:
+            - type: number
+            - type: string
+        line_total:
+          oneOf:
+            - type: number
+            - type: string
+      required: [description, qty, unit_price, line_total]
+    InvoiceExtraction:
+      type: object
+      properties:
+        supplier:
+          type: string
+        client_id:
+          type: string
+        document_id:
+          type: string
+          format: uuid
+        invoice_number:
+          type: string
+        invoice_internal:
+          type: string
+        doc_internal_ref:
+          type: string
+        remesa:
+          type: string
+        remito:
+          type: string
+        invoice_date:
+          type: string
+        due_date:
+          type: string
+        currency:
+          type: string
+        subtotal:
+          oneOf:
+            - type: number
+            - type: string
+        iva_total:
+          oneOf:
+            - type: number
+            - type: string
+        perceptions_total:
+          oneOf:
+            - type: number
+            - type: string
+        grand_total:
+          oneOf:
+            - type: number
+            - type: string
+        extractor_primary:
+          type: string
+          enum: [docai]
+        extractor_fallback_used:
+          type: boolean
+        extract_confidence:
+          type: number
+        raw_extraction:
+          type: object
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceLine"
+      required:
+        - supplier
+        - client_id
+        - document_id
+        - invoice_number
+        - invoice_internal
+        - doc_internal_ref
+        - remesa
+        - remito
+        - invoice_date
+        - due_date
+        - currency
+        - subtotal
+        - iva_total
+        - perceptions_total
+        - grand_total
+        - extractor_primary
+        - extractor_fallback_used
+        - extract_confidence
+        - raw_extraction
+        - lines
+    InvoiceQuality:
+      type: object
+      properties:
+        score:
+          type: number
+        needs_review:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            type: string
+        checks:
+          type: object
+          properties:
+            required_fields_ok:
+              type: boolean
+            totals_consistency_ok:
+              type: boolean
+            lines_consistency_ok:
+              type: boolean
+          required: [required_fields_ok, totals_consistency_ok, lines_consistency_ok]
+      required: [score, needs_review, reasons, checks]
+    ResponseMeta:
+      type: object
+      properties:
+        request_id:
+          type: string
+        duration_ms:
+          type: integer
+      required: [request_id, duration_ms]
+    InvoiceExtractSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        extraction:
+          $ref: "#/components/schemas/InvoiceExtraction"
+        quality:
+          $ref: "#/components/schemas/InvoiceQuality"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+      required: [success, extraction, quality, meta]
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+          required: [code, message]
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+      required: [success, error, meta]

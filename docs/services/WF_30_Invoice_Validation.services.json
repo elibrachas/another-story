@@ -1,0 +1,288 @@
+{
+  "name": "WF_30_Invoice_Validation_Services",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "name": "Cron - every 5 min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH cte AS (\n  SELECT id\n  FROM nucleo_ops.documents_inbox\n  WHERE doc_type = 'invoice_pdf' AND status = 'queued'\n  ORDER BY received_at ASC\n  FOR UPDATE SKIP LOCKED\n  LIMIT 1\n)\nUPDATE nucleo_ops.documents_inbox d\nSET status='processing',\n    processing_note='claimed by WF_30 services',\n    updated_at=now()\nFROM cte\nWHERE d.id = cte.id\nRETURNING d.*;",
+        "options": {}
+      },
+      "name": "Claim next invoice_pdf doc",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.id}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "IF has document?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SERVICES_API_URL || 'https://cronicaslaborales.com/api/services/v1/invoices/extract'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SERVICE_API_TOKEN}}"
+            },
+            {
+              "name": "X-Request-Id",
+              "value": "={{$execution.id + '-' + $json.id}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { document_id: $json.id, client_id: $json.client_id, supplier: $json.supplier || 'bosch', drive_file_id: $json.drive_file_id, doc_internal_ref: $json.doc_internal_ref || '' } }}",
+        "options": {
+          "timeout": 240000,
+          "ignoreResponseCode": true,
+          "retryOnFail": true,
+          "maxTries": 3
+        }
+      },
+      "name": "Invoice Extract Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "continueOnFail": true,
+      "position": [
+        -448,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.success === true}}",
+              "operation": "isTrue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "IF extraction success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"select nucleo_ops.fn_ingest_invoice_payload('\" + JSON.stringify($json.extraction).replace(/'/g, \"''\") + \"'::jsonb) as result;\" }}",
+        "options": {}
+      },
+      "name": "Persist invoice payload",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$node['Invoice Extract Service'].json.quality.needs_review}}",
+              "operation": "isTrue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "IF needs review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        176,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'needs_review', '\" + ($node['Invoice Extract Service'].json.quality.reasons || []).join(', ').replace(/'/g, \"''\") + \"');\" }}",
+        "options": {}
+      },
+      "name": "Set needs_review",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        416,
+        24
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'processed', 'invoice validated by services api');\" }}",
+        "options": {}
+      },
+      "name": "Set processed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        416,
+        216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"select nucleo_ops.fn_set_document_status('\" + $node['Claim next invoice_pdf doc'].json.id + \"'::uuid, 'needs_review', 'technical_failure_after_retries');\" }}",
+        "options": {}
+      },
+      "name": "Set needs_review technical failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Cron - every 5 min": {
+      "main": [
+        [
+          {
+            "node": "Claim next invoice_pdf doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim next invoice_pdf doc": {
+      "main": [
+        [
+          {
+            "node": "IF has document?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF has document?": {
+      "main": [
+        [
+          {
+            "node": "Invoice Extract Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Extract Service": {
+      "main": [
+        [
+          {
+            "node": "IF extraction success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF extraction success?": {
+      "main": [
+        [
+          {
+            "node": "Persist invoice payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set needs_review technical failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist invoice payload": {
+      "main": [
+        [
+          {
+            "node": "IF needs review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF needs review?": {
+      "main": [
+        [
+          {
+            "node": "Set needs_review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
