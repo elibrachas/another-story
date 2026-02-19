@@ -1,6 +1,7 @@
 "use server"
 
 import { createServerClient } from "@supabase/ssr"
+import type { User } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { sanitizeContent, sanitizeText } from "@/lib/sanitize"
@@ -32,16 +33,40 @@ function createServerActionClient() {
   )
 }
 
+type AuthUserResult = {
+  user: User | null
+  error: string | null
+}
+
+async function getAuthenticatedUser(supabase: ReturnType<typeof createServerActionClient>): Promise<AuthUserResult> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    return { user, error: null }
+  }
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  if (session?.user) {
+    return { user: session.user, error: null }
+  }
+
+  return { user: null, error: userError?.message ?? sessionError?.message ?? null }
+}
+
 export async function createInitialProfile() {
   const supabase = createServerActionClient()
 
   try {
     console.log("Iniciando createInitialProfile...")
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       console.log("No hay sesión activa")
@@ -119,10 +144,7 @@ export async function submitComment(formData: FormData) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -142,6 +164,21 @@ export async function submitComment(formData: FormData) {
       }
     }
 
+    // Obtener datos del perfil para el autor
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error fetching profile for comment:", profileError)
+    }
+
+    const rawAuthorName = profile?.display_name?.trim() || profile?.username?.trim() || "Anónimo"
+    const sanitizedAuthor = sanitizeText(rawAuthorName) || "Anónimo"
+    const sanitizedDisplayName = profile?.display_name ? sanitizeText(profile.display_name.trim()) : null
+
     // Sanitizar contenido
     const sanitizedContent = sanitizeContent(content.trim())
 
@@ -149,7 +186,9 @@ export async function submitComment(formData: FormData) {
     const { error: commentError } = await supabase.from("comments").insert({
       story_id: storyId,
       content: sanitizedContent,
-      author_id: user.id,
+      user_id: user.id,
+      author: sanitizedAuthor,
+      display_name: sanitizedDisplayName,
       approved: false, // Los comentarios requieren aprobación
     })
 
@@ -179,10 +218,7 @@ export async function submitStory(formData: FormData) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -193,6 +229,7 @@ export async function submitStory(formData: FormData) {
 
     const title = formData.get("title") as string
     const content = formData.get("content") as string
+    const industry = formData.get("industry") as string
     const tagsJson = formData.get("tags") as string
 
     // Validaciones
@@ -203,6 +240,13 @@ export async function submitStory(formData: FormData) {
       }
     }
 
+    if (!industry || industry.trim().length === 0) {
+      return {
+        success: false,
+        error: "La industria es obligatoria",
+      }
+    }
+
     if (!content || content.trim().length < 50) {
       return {
         success: false,
@@ -210,9 +254,25 @@ export async function submitStory(formData: FormData) {
       }
     }
 
+    // Obtener datos del perfil para el autor
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error fetching profile for story:", profileError)
+    }
+
+    const rawAuthorName = profile?.display_name?.trim() || profile?.username?.trim() || "Anónimo"
+    const sanitizedAuthor = sanitizeText(rawAuthorName) || "Anónimo"
+    const sanitizedDisplayName = profile?.display_name ? sanitizeText(profile.display_name.trim()) : null
+
     // Sanitizar contenido
     const sanitizedTitle = sanitizeText(title.trim())
     const sanitizedContent = sanitizeContent(content.trim())
+    const sanitizedIndustry = sanitizeText(industry.trim())
 
     // Parsear etiquetas
     let tags: string[] = []
@@ -228,7 +288,10 @@ export async function submitStory(formData: FormData) {
       .insert({
         title: sanitizedTitle,
         content: sanitizedContent,
-        author_id: user.id,
+        author: sanitizedAuthor,
+        display_name: sanitizedDisplayName,
+        industry: sanitizedIndustry,
+        user_id: user.id,
         published: false, // Las historias requieren aprobación
       })
       .select()
@@ -298,10 +361,7 @@ export async function upvoteStory(storyId: string) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -485,10 +545,7 @@ export async function upvoteComment(commentId: string) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return {
@@ -561,10 +618,7 @@ export async function updateProfile(formData: FormData) {
     const supabase = createServerActionClient()
 
     // Obtener el usuario actual
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "Debes iniciar sesión" }
@@ -675,10 +729,7 @@ export async function approveStory(storyId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
@@ -711,10 +762,7 @@ export async function rejectStory(storyId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
@@ -746,10 +794,7 @@ export async function adminDeleteComment(commentId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }
@@ -781,10 +826,7 @@ export async function adminRejectStory(storyId: string) {
 
   try {
     // Verificar si el usuario es administrador
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(supabase)
 
     if (authError || !user) {
       return { success: false, error: "No autenticado" }

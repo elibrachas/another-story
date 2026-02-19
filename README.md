@@ -36,10 +36,12 @@ Another Story is a full stack web application for anonymously sharing workplace 
 
 Create a `.env.local` file and define the following keys:
 
-- `NEXT_PUBLIC_SUPABASE_URL` – Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY` – Supabase service role key
-- `NEXT_PUBLIC_VERCEL_URL` – Base URL used to generate metadata
-- `OPENAI_API_KEY` – API key for features that integrate with OpenAI
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase public anon key (required by client + server actions)
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `NEXT_PUBLIC_SITE_URL` - Public base URL for auth callbacks
+- `NEXT_PUBLIC_VERCEL_URL` - Base URL used to generate metadata
+- `OPENAI_API_KEY` - API key for features that integrate with OpenAI
 
 Additional variables may be required depending on your deployment. See [docs/environment.md](docs/environment.md) for more details.
 
