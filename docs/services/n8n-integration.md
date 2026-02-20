@@ -12,8 +12,7 @@ Keep:
 
 1. `Claim next invoice_pdf doc`
 2. `IF has document?` (validar `id` + source file: `drive_file_id` o `storage_path`)
-3. `Persist invoice payload`
-4. status updates (`processed` / `failed`)
+3. status updates (`processed` / `failed`)
 
 Remove/replace:
 
@@ -85,11 +84,11 @@ Technical failure status query:
 
 ## Persist payload
 
-Use `{{$json.extraction}}` from service response:
+The API now persists payload automatically in DB.
 
-```sql
-={{ "select nucleo_ops.fn_ingest_invoice_payload('" + JSON.stringify($json.extraction).replace(/'/g, "''") + "'::jsonb) as result;" }}
-```
+Recommendation:
+
+1. Remove/disable `Persist invoice payload` node in n8n to avoid duplicate ingestion.
 
 ## Status handling
 

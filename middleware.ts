@@ -3,6 +3,12 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname === "/mi-libro" || req.nextUrl.pathname === "/mi-libro/") {
+    const redirectUrl = new URL("https://alcaparra.co/libro-renuncio")
+    redirectUrl.search = req.nextUrl.search
+    return NextResponse.redirect(redirectUrl, 301)
+  }
+
   // Crear response inicial
   let response = NextResponse.next({
     request: {

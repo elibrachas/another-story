@@ -237,6 +237,9 @@ components:
           type: string
         duration_ms:
           type: integer
+        persisted_in_db:
+          type: boolean
+          description: True when the API successfully persisted extraction into DB.
       required: [request_id, duration_ms]
     InvoiceExtractSuccessResponse:
       type: object

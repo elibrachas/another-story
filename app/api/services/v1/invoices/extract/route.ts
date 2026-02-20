@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { ZodError } from "zod"
 import { verifyServiceToken } from "@/lib/services/auth/service-token"
 import { runInvoiceExtractionPipeline } from "@/lib/services/invoices/pipeline"
+import { persistInvoiceExtraction } from "@/lib/services/invoices/persistence"
 import { invoiceExtractRequestSchema } from "@/lib/services/invoices/schema"
 
 export const runtime = "nodejs"
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
     const payload = invoiceExtractRequestSchema.parse(parsedBody)
 
     const pipelineResult = await runInvoiceExtractionPipeline(payload)
+    const persistenceResult = await persistInvoiceExtraction(pipelineResult.extraction)
     const durationMs = Date.now() - startedAt
 
     console.log("invoice_extract_completed", {
@@ -86,6 +88,8 @@ export async function POST(request: Request) {
       needs_review: pipelineResult.quality.needs_review,
       fallback_attempted: pipelineResult.meta.fallback_attempted,
       fallback_succeeded: pipelineResult.meta.fallback_succeeded,
+      persisted_in_db: true,
+      persist_result: persistenceResult.result ?? null,
     })
 
     return NextResponse.json({
@@ -95,6 +99,7 @@ export async function POST(request: Request) {
       meta: {
         request_id: requestId,
         duration_ms: durationMs,
+        persisted_in_db: true,
       },
     })
   } catch (error) {

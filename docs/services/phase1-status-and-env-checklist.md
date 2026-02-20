@@ -85,7 +85,7 @@ Cambios concretos:
    - `supplier`
    - (`storage_bucket` + `storage_path`) o `drive_file_id`
    - `doc_internal_ref`
-3. Mantener persistencia con `nucleo_ops.fn_ingest_invoice_payload(...)`.
+3. La API persiste automaticamente con `nucleo_ops.fn_ingest_invoice_payload(...)`.
 4. Branch por `quality.needs_review`:
    - `true` -> `status='needs_review'`
    - `false` -> `status='processed'`
@@ -151,3 +151,4 @@ Variables:
 1. Confirmar en DB que `documents_inbox.status` admite `needs_review`.
 2. Confirmar permisos reales de Service Account sobre Drive del cliente.
 3. Rotacion periodica de `SERVICE_API_TOKEN`.
+4. Confirmar que existe RPC `execute_sql` (o alternativa equivalente) para que la API pueda ejecutar `nucleo_ops.fn_ingest_invoice_payload(...)`.

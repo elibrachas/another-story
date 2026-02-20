@@ -13,7 +13,7 @@ Provide high-reliability invoice extraction with:
 2. Fallback extractor: OpenAI Responses API (`input_file` + JSON schema).
 3. Strict quality gate that determines `needs_review`.
 
-Persistence remains outside this API (n8n writes to Postgres / `nucleo_ops`).
+Extraction persistence is performed by the API itself using `nucleo_ops.fn_ingest_invoice_payload(...)`.
 
 ## Auth
 
@@ -42,7 +42,8 @@ The canonical API contract is defined in:
 5. Normalize to canonical invoice schema.
 6. Run strict quality gate.
 7. If quality fails, run OpenAI fallback and re-check quality.
-8. Return extraction + quality + metadata (`request_id`, `duration_ms`).
+8. Persist canonical extraction in DB.
+9. Return extraction + quality + metadata (`request_id`, `duration_ms`).
 
 ## Logging
 

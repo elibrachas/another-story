@@ -1,11 +1,16 @@
 import { POST } from "@/app/api/services/v1/invoices/extract/route"
 import { runInvoiceExtractionPipeline } from "@/lib/services/invoices/pipeline"
+import { persistInvoiceExtraction } from "@/lib/services/invoices/persistence"
 
 jest.mock("@/lib/services/invoices/pipeline", () => ({
   runInvoiceExtractionPipeline: jest.fn(),
 }))
+jest.mock("@/lib/services/invoices/persistence", () => ({
+  persistInvoiceExtraction: jest.fn(),
+}))
 
 const pipelineMock = runInvoiceExtractionPipeline as jest.MockedFunction<typeof runInvoiceExtractionPipeline>
+const persistMock = persistInvoiceExtraction as jest.MockedFunction<typeof persistInvoiceExtraction>
 
 const validPayload = {
   document_id: "f22835d8-1498-4c19-9e8f-968bb1f4f4aa",
@@ -30,6 +35,8 @@ describe("POST /api/services/v1/invoices/extract", () => {
   beforeEach(() => {
     process.env.SERVICE_API_TOKEN = "service-token"
     pipelineMock.mockReset()
+    persistMock.mockReset()
+    persistMock.mockResolvedValue({ result: null })
   })
 
   afterAll(() => {
@@ -147,6 +154,8 @@ describe("POST /api/services/v1/invoices/extract", () => {
     expect(response.status).toBe(200)
     expect(body.success).toBe(true)
     expect(body.quality.needs_review).toBe(false)
+    expect(body.meta.persisted_in_db).toBe(true)
+    expect(persistMock).toHaveBeenCalledTimes(1)
   })
 
   it("returns 200 with needs_review true", async () => {
@@ -204,6 +213,8 @@ describe("POST /api/services/v1/invoices/extract", () => {
     expect(response.status).toBe(200)
     expect(body.success).toBe(true)
     expect(body.quality.needs_review).toBe(true)
+    expect(body.meta.persisted_in_db).toBe(true)
+    expect(persistMock).toHaveBeenCalledTimes(1)
   })
 
   it("returns 200 with supabase storage source", async () => {
@@ -261,10 +272,71 @@ describe("POST /api/services/v1/invoices/extract", () => {
     expect(response.status).toBe(200)
     expect(body.success).toBe(true)
     expect(body.quality.needs_review).toBe(false)
+    expect(body.meta.persisted_in_db).toBe(true)
+    expect(persistMock).toHaveBeenCalledTimes(1)
   })
 
   it("returns controlled error when pipeline throws", async () => {
     pipelineMock.mockRejectedValue(new Error("DocAI extraction failed (503): unavailable"))
+
+    const request = new Request("http://localhost/api/services/v1/invoices/extract", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer service-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(validPayload),
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body.success).toBe(false)
+    expect(body.error.code).toBe("extraction_failed")
+    expect(persistMock).toHaveBeenCalledTimes(0)
+  })
+
+  it("returns controlled error when persistence fails", async () => {
+    pipelineMock.mockResolvedValue({
+      extraction: {
+        supplier: "bosch",
+        client_id: "client-1",
+        document_id: validPayload.document_id,
+        invoice_number: "A-1",
+        invoice_internal: "INT-1",
+        doc_internal_ref: "",
+        remesa: "",
+        remito: "",
+        invoice_date: "2026-02-01",
+        due_date: "2026-02-28",
+        currency: "ARS",
+        subtotal: "100",
+        iva_total: "21",
+        perceptions_total: "0",
+        grand_total: "121",
+        extractor_primary: "docai",
+        extractor_fallback_used: false,
+        extract_confidence: 0.9,
+        raw_extraction: {},
+        lines: [{ line_no: 1, description: "Item", qty: "1", unit_price: "100", line_total: "100", code_raw: "" }],
+      },
+      quality: {
+        score: 1,
+        needs_review: false,
+        reasons: [],
+        checks: {
+          required_fields_ok: true,
+          totals_consistency_ok: true,
+          lines_consistency_ok: true,
+        },
+      },
+      meta: {
+        fallback_attempted: false,
+        fallback_succeeded: false,
+      },
+    })
+    persistMock.mockRejectedValue(new Error("Persistence failed while calling execute_sql: relation does not exist"))
 
     const request = new Request("http://localhost/api/services/v1/invoices/extract", {
       method: "POST",
