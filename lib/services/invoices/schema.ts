@@ -4,8 +4,37 @@ export const invoiceExtractRequestSchema = z.object({
   document_id: z.string().uuid(),
   client_id: z.string().min(1),
   supplier: z.string().min(1),
-  drive_file_id: z.string().min(1),
+  drive_file_id: z.string().min(1).optional(),
+  storage_bucket: z.string().min(1).optional(),
+  storage_path: z.string().min(1).optional(),
   doc_internal_ref: z.string().optional().default(""),
+}).superRefine((value, ctx) => {
+  const hasDriveFileId = typeof value.drive_file_id === "string" && value.drive_file_id.trim().length > 0
+  const hasStorageBucket = typeof value.storage_bucket === "string" && value.storage_bucket.trim().length > 0
+  const hasStoragePath = typeof value.storage_path === "string" && value.storage_path.trim().length > 0
+
+  if (hasStorageBucket && !hasStoragePath) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["storage_path"],
+      message: "storage_path is required when storage_bucket is provided",
+    })
+  }
+
+  if (hasStoragePath && !hasStorageBucket) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["storage_bucket"],
+      message: "storage_bucket is required when storage_path is provided",
+    })
+  }
+
+  if (!hasDriveFileId && !(hasStorageBucket && hasStoragePath)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Either drive_file_id or storage_bucket + storage_path is required",
+    })
+  }
 })
 
 export const invoiceLineSchema = z.object({

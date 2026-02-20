@@ -10,7 +10,7 @@ Se implemento la mini API privada de servicios para extraccion de facturas:
 Con:
 
 1. Auth por bearer token de servicio (`SERVICE_API_TOKEN`).
-2. Descarga de PDF desde Google Drive (Service Account).
+2. Descarga de PDF desde Google Drive o Supabase Storage.
 3. Extraccion primaria con DocAI.
 4. Fallback/QA con OpenAI (`responses` + `input_file` + `json_schema`).
 5. Quality gate estricto y salida `needs_review` con motivos.
@@ -29,18 +29,21 @@ Archivos clave:
 Obligatorias para este servicio:
 
 1. `SERVICE_API_TOKEN`
-2. `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL`
-3. `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
-4. `GOOGLE_SERVICE_ACCOUNT_PROJECT_ID`
-5. `DOCAI_INVOICE_ENDPOINT`
-6. `OPENAI_API_KEY`
+2. `DOCAI_INVOICE_ENDPOINT`
+3. `OPENAI_API_KEY`
 
 Recomendadas/soportadas:
 
-1. `GOOGLE_DRIVE_SCOPE` (default: `https://www.googleapis.com/auth/drive.readonly`)
-2. `DOCAI_SCOPE` (default: `https://www.googleapis.com/auth/cloud-platform`, solo para endpoint oficial Google Document AI)
-3. `OPENAI_INVOICE_MODEL` (default: `gpt-4.1`)
-4. `DOCAI_API_KEY` (si tu endpoint de DocAI personalizado requiere bearer token)
+1. `DOCAI_SCOPE` (default: `https://www.googleapis.com/auth/cloud-platform`, solo para endpoint oficial Google Document AI)
+2. `OPENAI_INVOICE_MODEL` (default: `gpt-4.1`)
+3. `DOCAI_API_KEY` (si tu endpoint de DocAI personalizado requiere bearer token)
+
+Solo si usas Google Drive como source:
+
+1. `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL`
+2. `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+3. `GOOGLE_SERVICE_ACCOUNT_PROJECT_ID`
+4. `GOOGLE_DRIVE_SCOPE` (default: `https://www.googleapis.com/auth/drive.readonly`)
 
 Tambien siguen siendo necesarias las envs base de la app:
 
@@ -80,7 +83,7 @@ Cambios concretos:
    - `document_id`
    - `client_id`
    - `supplier`
-   - `drive_file_id`
+   - (`storage_bucket` + `storage_path`) o `drive_file_id`
    - `doc_internal_ref`
 3. Mantener persistencia con `nucleo_ops.fn_ingest_invoice_payload(...)`.
 4. Branch por `quality.needs_review`:

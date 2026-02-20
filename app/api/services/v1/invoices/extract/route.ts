@@ -81,6 +81,7 @@ export async function POST(request: Request) {
       document_id: payload.document_id,
       client_id: payload.client_id,
       supplier: payload.supplier,
+      source: payload.storage_bucket ? "supabase_storage" : "google_drive",
       duration_ms: durationMs,
       needs_review: pipelineResult.quality.needs_review,
       fallback_attempted: pipelineResult.meta.fallback_attempted,

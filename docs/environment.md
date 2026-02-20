@@ -16,10 +16,18 @@ These variables are required for both development and production. When deploying
 The private services API under `/api/services/v1/*` needs additional variables:
 
 - **SERVICE_API_TOKEN**: Shared bearer token for machine-to-machine calls (for example, n8n -> Next.js).
+- **DOCAI_INVOICE_ENDPOINT**: HTTP endpoint for the Document AI invoice parser.
+- **DOCAI_SCOPE**: OAuth scope for Google Document AI when using the official Google `:process` endpoint. Default: `https://www.googleapis.com/auth/cloud-platform`.
+- **OPENAI_INVOICE_MODEL**: Model name used for fallback extraction (default is `gpt-4.1`).
+
+If you still use Google Drive as file source (`drive_file_id` in request), also set:
+
 - **GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL**: Service account email used to read invoice PDFs from Google Drive.
 - **GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY**: PEM private key for the service account (store with escaped newlines in `.env`).
 - **GOOGLE_SERVICE_ACCOUNT_PROJECT_ID**: Google Cloud project id associated with the service account.
 - **GOOGLE_DRIVE_SCOPE**: OAuth scope for Drive reads. Default: `https://www.googleapis.com/auth/drive.readonly`.
-- **DOCAI_INVOICE_ENDPOINT**: HTTP endpoint for the Document AI invoice parser.
-- **DOCAI_SCOPE**: OAuth scope for Google Document AI when using the official Google `:process` endpoint. Default: `https://www.googleapis.com/auth/cloud-platform`.
-- **OPENAI_INVOICE_MODEL**: Model name used for fallback extraction (default is `gpt-4.1`).
+
+If you use Supabase Storage as file source (`storage_bucket` + `storage_path`), no extra env is required beyond:
+
+- **NEXT_PUBLIC_SUPABASE_URL** (or **SUPABASE_URL**)
+- **SUPABASE_SERVICE_ROLE_KEY**

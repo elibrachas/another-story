@@ -35,7 +35,9 @@ The canonical API contract is defined in:
 
 1. Validate bearer token.
 2. Validate body with Zod.
-3. Download PDF from Google Drive using service account credentials.
+3. Download PDF from source:
+   - Supabase Storage (`storage_bucket` + `storage_path`), or
+   - Google Drive (`drive_file_id`) for backward compatibility.
 4. Run DocAI extraction.
 5. Normalize to canonical invoice schema.
 6. Run strict quality gate.
@@ -64,5 +66,6 @@ No full PDF payload is logged.
 - Quality gate: `lib/services/invoices/quality.ts`
 - Providers:
   - `lib/services/invoices/providers/drive.ts`
+  - `lib/services/invoices/providers/supabase-storage.ts`
   - `lib/services/invoices/providers/docai.ts`
   - `lib/services/invoices/providers/openai-fallback.ts`

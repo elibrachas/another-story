@@ -28,7 +28,7 @@ paths:
                 required: [ok, service, version]
   /api/services/v1/invoices/extract:
     post:
-      summary: Extract invoice payload from Google Drive PDF
+      summary: Extract invoice payload from Google Drive or Supabase Storage PDF
       operationId: extractInvoice
       security:
         - bearerAuth: []
@@ -96,9 +96,18 @@ components:
           type: string
         drive_file_id:
           type: string
+        storage_bucket:
+          type: string
+          description: Supabase Storage bucket name.
+        storage_path:
+          type: string
+          description: Object path or file name inside the bucket.
         doc_internal_ref:
           type: string
-      required: [document_id, client_id, supplier, drive_file_id]
+      required: [document_id, client_id, supplier]
+      anyOf:
+        - required: [drive_file_id]
+        - required: [storage_bucket, storage_path]
     InvoiceLine:
       type: object
       properties:

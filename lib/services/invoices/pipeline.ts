@@ -1,6 +1,7 @@
 import { normalizeDocAIExtraction, normalizeOpenAIExtraction } from "@/lib/services/invoices/normalize"
 import { extractInvoiceWithDocAI } from "@/lib/services/invoices/providers/docai"
 import { downloadPdfFromGoogleDrive } from "@/lib/services/invoices/providers/drive"
+import { downloadPdfFromSupabaseStorage } from "@/lib/services/invoices/providers/supabase-storage"
 import { extractInvoiceWithOpenAIFallback } from "@/lib/services/invoices/providers/openai-fallback"
 import { addQualityReason, evaluateExtractionQuality } from "@/lib/services/invoices/quality"
 import type {
@@ -21,7 +22,15 @@ export type InvoiceExtractionPipelineResult = {
 export async function runInvoiceExtractionPipeline(
   request: InvoiceExtractRequest,
 ): Promise<InvoiceExtractionPipelineResult> {
-  const downloadedFile = await downloadPdfFromGoogleDrive(request.drive_file_id)
+  const hasStorageSource =
+    typeof request.storage_bucket === "string" &&
+    request.storage_bucket.trim().length > 0 &&
+    typeof request.storage_path === "string" &&
+    request.storage_path.trim().length > 0
+
+  const downloadedFile = hasStorageSource
+    ? await downloadPdfFromSupabaseStorage(request.storage_bucket!, request.storage_path!)
+    : await downloadPdfFromGoogleDrive(request.drive_file_id!)
 
   const docAIResponse = await extractInvoiceWithDocAI(downloadedFile.buffer)
   const docAIExtraction = normalizeDocAIExtraction(request, docAIResponse)

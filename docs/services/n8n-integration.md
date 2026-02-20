@@ -11,7 +11,7 @@ An example importable workflow is included at:
 Keep:
 
 1. `Claim next invoice_pdf doc`
-2. `IF has document?` (validar `id` y `drive_file_id`)
+2. `IF has document?` (validar `id` + source file: `drive_file_id` o `storage_path`)
 3. `Persist invoice payload`
 4. status updates (`processed` / `failed`)
 
@@ -42,6 +42,19 @@ Create node: `Invoice Extract Service`
   - `Content-Type: application/json`
   - `X-Request-Id: {{$execution.id}}-{{$json.id}}`
 - JSON Body:
+
+```json
+{
+  "document_id": "={{$json.id}}",
+  "client_id": "={{$json.client_id}}",
+  "supplier": "={{$json.supplier || 'bosch'}}",
+  "storage_bucket": "={{$json.storage_bucket || 'nucleo-facturas'}}",
+  "storage_path": "={{$json.storage_path || $json.attachment_name}}",
+  "doc_internal_ref": "={{$json.doc_internal_ref || ''}}"
+}
+```
+
+Alternative (legacy Google Drive source):
 
 ```json
 {
