@@ -1,8 +1,10 @@
 import { createSign } from "crypto"
 
 type GoogleAccessTokenResponse = {
-  access_token: string
-  expires_in: number
+  access_token?: unknown
+  expires_in?: unknown
+  error?: unknown
+  error_description?: unknown
 }
 
 type CachedToken = {
@@ -77,15 +79,35 @@ export async function getGoogleServiceAccessToken(scope: string): Promise<string
     throw new Error(`Failed to obtain Google access token (${tokenResponse.status}): ${errorText}`)
   }
 
-  const tokenPayload = (await tokenResponse.json()) as GoogleAccessTokenResponse
-  if (!tokenPayload.access_token || !tokenPayload.expires_in) {
-    throw new Error("Google OAuth token response is missing access_token or expires_in")
+  const rawPayload = await tokenResponse.text()
+  let tokenPayload: GoogleAccessTokenResponse
+
+  try {
+    tokenPayload = JSON.parse(rawPayload) as GoogleAccessTokenResponse
+  } catch {
+    throw new Error(
+      `Google OAuth token response is not valid JSON (${tokenResponse.status}): ${rawPayload.slice(0, 1000)}`,
+    )
+  }
+
+  const accessToken = typeof tokenPayload.access_token === "string" ? tokenPayload.access_token : ""
+  const expiresIn =
+    typeof tokenPayload.expires_in === "number"
+      ? tokenPayload.expires_in
+      : typeof tokenPayload.expires_in === "string"
+        ? Number(tokenPayload.expires_in)
+        : NaN
+
+  if (!accessToken || !Number.isFinite(expiresIn) || expiresIn <= 0) {
+    throw new Error(
+      `Google OAuth token response is missing access_token or expires_in. payload=${JSON.stringify(tokenPayload)}`,
+    )
   }
 
   tokenCache.set(scope, {
-    token: tokenPayload.access_token,
-    expiresAtEpochMs: Date.now() + (tokenPayload.expires_in - 60) * 1000,
+    token: accessToken,
+    expiresAtEpochMs: Date.now() + (expiresIn - 60) * 1000,
   })
 
-  return tokenPayload.access_token
+  return accessToken
 }
